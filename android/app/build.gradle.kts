@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.smartsync"
+    namespace = "com.codemakesoft.smartsync"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

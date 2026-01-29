@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../auth/data/firebase_auth_service.dart';
 import '../home/presentation/home_screen.dart';
+import '../profile/presentation/profile_screen.dart';
 
 class MainSkeleton extends StatefulWidget {
   const MainSkeleton({super.key});
@@ -17,7 +18,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const Center(child: Text("Perfil (Próximamente)")),
+    const ProfileScreen(),
   ];
 
   @override

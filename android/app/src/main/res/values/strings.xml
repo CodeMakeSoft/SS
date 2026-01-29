@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SmartSync Run</string>
+    <string name="facebook_app_id">1599454861228763</string>
+    <string name="facebook_client_token">0f45e50b82cffe70ac8fef5617041403</string>
+    <string name="fb_login_protocol_scheme">fb1599454861228763</string>
+</resources>

@@ -31,13 +31,28 @@ class SmartSyncApp extends StatelessWidget {
       title: 'SmartSync Run',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA), // Clean Background
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5), // Azul deportivo
-          primary: const Color(0xFF1E88E5),
-          secondary: const Color(0xFFFF5252), // Acento rojo para acciones importantes
+          seedColor: const Color(0xFF0D47A1), // Deep Tech Blue
+          primary: const Color(0xFF0D47A1),
+          secondary: const Color(0xFF00B0FF), // Cyan Accent
+          surface: Colors.white,
+          onSurface: const Color(0xFF263238), // Dark Grey Text
         ),
         useMaterial3: true,
-        fontFamily: 'Roboto', // Default, pero preparado para cambiar
+        // App Bar Theme
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          iconTheme: IconThemeData(color: Color(0xFF263238)),
+          titleTextStyle: TextStyle(
+            color: Color(0xFF263238), 
+            fontSize: 20, 
+            fontWeight: FontWeight.bold
+          ),
+        ),
       ),
       home: StreamBuilder(
         stream: authService.authStateChanges,

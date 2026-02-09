@@ -1,7 +1,6 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../auth/data/firebase_auth_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -101,44 +100,97 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true, 
-      appBar: AppBar(
-        title: const Text('Mapa en Vivo', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.8),
-        iconTheme: const IconThemeData(color: Colors.black87),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.red),
-            onPressed: () => FirebaseAuthService().signOut(),
-          ),
-        ],
-      ),
+      // No AppBar, using custom header
       body: Stack(
         children: [
+          // 1. MAP (Full Screen)
           GoogleMap(
-            mapType: MapType.normal,
+            mapType: MapType.normal, // Or hybrid/dark if Tech theme requires
             initialCameraPosition: _initialPosition,
             myLocationEnabled: _locationPermissionGranted,
-            myLocationButtonEnabled: false, // Custom button below
+            myLocationButtonEnabled: false, 
             zoomControlsEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
-              // If permission already granted, move immediately
               if (_locationPermissionGranted) {
                 _goToCurrentLocation();
               }
             },
           ),
           
-          // Custom FAB for location
+          // 2. TECH GLASS HEADER
           Positioned(
-            bottom: 24,
-            right: 16,
+            top: 50,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withOpacity(0.9), // Dark Tech
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  )
+                ],
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Row(
+                children: [
+                   Container(
+                     padding: const EdgeInsets.all(8),
+                     decoration: BoxDecoration(
+                       color: Colors.green.withOpacity(0.2),
+                       shape: BoxShape.circle,
+                     ),
+                     child: const Icon(Icons.satellite_alt, color: Colors.green, size: 20),
+                   ),
+                   const SizedBox(width: 15),
+                   Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       const Text(
+                         "RASTREO ACTIVO",
+                         style: TextStyle(
+                           color: Colors.white, 
+                           fontWeight: FontWeight.bold,
+                           fontSize: 12,
+                           letterSpacing: 1.5,
+                         ),
+                       ),
+                       Text(
+                         "Señal GPS Estable",
+                         style: TextStyle(
+                           color: Colors.white.withOpacity(0.6), 
+                           fontSize: 10,
+                         ),
+                       ),
+                     ],
+                   ),
+                   const Spacer(),
+                   // Optional: Simple compass or connection icon
+                   Icon(Icons.wifi, color: Colors.white.withOpacity(0.5), size: 18),
+                ],
+              ),
+            ),
+          ),
+          
+          // 3. custom FAB for location (Higher up to avoid BottomBar)
+          Positioned(
+            bottom: 160, // Adjusted to clear the Custom Bottom Bar comfortably
+            right: 20,
             child: FloatingActionButton(
               onPressed: _goToCurrentLocation,
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: const Color(0xFF0F172A), // Matches header
               foregroundColor: Colors.white,
-              child: const Icon(Icons.my_location),
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: const Icon(Icons.gps_fixed),
             ),
           ),
         ],

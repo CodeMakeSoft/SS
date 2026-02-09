@@ -1,9 +1,9 @@
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'features/auth/data/firebase_auth_service.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/layout/main_skeleton.dart';
+import 'features/splash/presentation/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,26 +54,55 @@ class SmartSyncApp extends StatelessWidget {
           ),
         ),
       ),
-      home: StreamBuilder(
-        stream: authService.authStateChanges,
-        builder: (context, snapshot) {
-          // Si el estado es activo (hay usuario), vamos al Home
-          if (snapshot.connectionState == ConnectionState.active) {
-            final user = snapshot.data;
-            if (user == null) {
-              return const LoginScreen();
-            }
-            return const MainSkeleton();
-          }
+      home: _AppRoot(authService: authService),
+    );
+  }
+}
 
-          // Mientras carga el estado de auth
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
+class _AppRoot extends StatefulWidget {
+  final FirebaseAuthService authService;
+  const _AppRoot({required this.authService});
+
+  @override
+  State<_AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<_AppRoot> {
+  // Show Splash initially?
+  // Only on cold start. Here, always true on restart.
+  bool _showSplash = true;
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Show Splash
+    if (_showSplash) {
+      return SplashScreen(
+        onFinish: () {
+          setState(() => _showSplash = false);
         },
-      ),
+      );
+    }
+
+    // 2. Show App (Auth Logic)
+    return StreamBuilder(
+      stream: widget.authService.authStateChanges,
+      builder: (context, snapshot) {
+        // Si el estado es activo (hay usuario), vamos al Skeleton
+        if (snapshot.connectionState == ConnectionState.active) {
+          final user = snapshot.data;
+          if (user == null) {
+            return const LoginScreen();
+          }
+           return const MainSkeleton();
+        }
+
+        // Mientras carga el estado de auth (transición invisible)
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
     );
   }
 }

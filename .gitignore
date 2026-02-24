@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# -----------------
+# SECRETS
+# -----------------
+# Do not leak Firebase configuration keys to GitHub
+**/google-services.json
+**/GoogleService-Info.plist
+firebase.json
+
+# Environment Variables
+.env
+.env.*

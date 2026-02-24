@@ -44,4 +44,18 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase configuration values
 /android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+**/macos/Runner/GoogleService-Info.plist
+# Si estás usando Firebase Web o el archivo autogenerado y quieres protegerlo (opcional, pero recomendado si el repo es público)
+# lib/firebase_options.dart
+
+# Environment variables (Archivos .env donde normalmente pones tus API Keys y secretos)
+.env
+.env.*
+
+# Llaves de firmas de Android (esto ya suele venir en android/.gitignore pero no está de más en la raíz)
+key.properties
+**/*.keystore
+**/*.jks

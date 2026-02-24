@@ -55,3 +55,4 @@ firebase.json
 # Environment Variables
 .env
 .env.*
+/android/app/google-services.json

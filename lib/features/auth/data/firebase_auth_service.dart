@@ -148,6 +148,38 @@ class FirebaseAuthService implements AuthService {
     }
   }
 
+  // --- ACCOUNT LINKING SPECIFIC METHODS ---
+
+  Future<User?> linkWithGoogle() async {
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) return null;
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final OAuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    return await linkCurrentUser(credential);
+  }
+
+  Future<User?> linkWithFacebook() async {
+    final LoginResult result = await _facebookAuth.login();
+    if (result.status == LoginStatus.success && result.accessToken != null) {
+      final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.tokenString);
+      return await linkCurrentUser(credential);
+    }
+    return null;
+  }
+
+  Future<User?> unlinkProvider(String providerId) async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null) {
+      return await user.unlink(providerId);
+    }
+    return null;
+  }
+
   /// Checks if the user's email exists in the 'users' collection in Firestore.
   /// This enforces the rule that only admins can register users.
   Future<bool> _checkIfUserIsAllowed(String? email) async {

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../data/local_database.dart';
+import 'package:provider/provider.dart';
+import '../providers/run_state_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,62 +55,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startTracking() {
     setState(() => _isTracking = true);
+    Provider.of<RunStateProvider>(
+      context,
+      listen: false,
+    ).setTrackingStatus(true);
 
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 3,
     );
 
-    _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
-      final newPoint = LatLng(position.latitude, position.longitude);
-      if (_routePoints.isNotEmpty) {
-        final lastPoint = _routePoints.last;
-        // Calculamos la distancia entre el último punto y este nuevo:
-        final distanceChunk = Geolocator.distanceBetween(
-          lastPoint.latitude,
-          lastPoint.longitude,
-          position.latitude,
-          position.longitude,
-        );
-        _totalDistanceMeters += distanceChunk; // Sumamos a nuestro total
-      }
-      _currentSpeed = position.speed;
-      await LocalDatabase.instance.insertLocation(
-        position.latitude, 
-        position.longitude, 
-        position.speed,
-      );
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) async {
+            final newPoint = LatLng(position.latitude, position.longitude);
+            if (_routePoints.isNotEmpty) {
+              final lastPoint = _routePoints.last;
+              // Calculamos la distancia entre el último punto y este nuevo:
+              final distanceChunk = Geolocator.distanceBetween(
+                lastPoint.latitude,
+                lastPoint.longitude,
+                position.latitude,
+                position.longitude,
+              );
+              _totalDistanceMeters += distanceChunk; // Sumamos a nuestro total
+            }
+            _currentSpeed = position.speed;
+            Provider.of<RunStateProvider>(
+              context,
+              listen: false,
+            ).updateStats(distance: _totalDistanceMeters, speed: _currentSpeed);
+            await LocalDatabase.instance.insertLocation(
+              position.latitude,
+              position.longitude,
+              position.speed,
+            );
 
-      setState(() {
-        _routePoints.add(newPoint);
-        _polylines = {
-          Polyline(
-            polylineId: const PolylineId('runner_route'),
-            color: Theme.of(context).colorScheme.primary,
-            width: 6,
-            points: _routePoints,
-            jointType: JointType.round,
-            endCap: Cap.roundCap,
-          )
-        };
-      });
-      final GoogleMapController controller = await _controller.future;
-      controller.animateCamera(CameraUpdate.newLatLng(newPoint));
-    });
+            setState(() {
+              _routePoints.add(newPoint);
+              _polylines = {
+                Polyline(
+                  polylineId: const PolylineId('runner_route'),
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 6,
+                  points: _routePoints,
+                  jointType: JointType.round,
+                  endCap: Cap.roundCap,
+                ),
+              };
+            });
+            final GoogleMapController controller = await _controller.future;
+            controller.animateCamera(CameraUpdate.newLatLng(newPoint));
+          },
+        );
   }
 
-  // --- DETENER RASTREO (Al terminar la carrera o pausar) ---
   void _stopTracking() {
     setState(() => _isTracking = false);
+    Provider.of<RunStateProvider>(
+      context,
+      listen: false,
+    ).setTrackingStatus(false);
     _positionStreamSubscription?.cancel();
   }
-  
+
   @override
-  void dispose() {  
+  void dispose() {
     _stopTracking();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -180,11 +195,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        _isTracking 
-                          ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h"
-                          : "Señal GPS Estable",
+                        _isTracking
+                            ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h"
+                            : "Señal GPS Estable",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8), 
+                          color: Colors.white.withOpacity(0.8),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Courier', // Un toque de cuentakilómetros
@@ -216,10 +231,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _startTracking();
                 }
               },
-              backgroundColor: _isTracking ? Colors.red : const Color(0xFF0F172A),
+              backgroundColor: _isTracking
+                  ? Colors.red
+                  : const Color(0xFF0F172A),
               foregroundColor: Colors.white,
               elevation: 4,
-              child: Icon(_isTracking ? Icons.stop : Icons.play_arrow), // Círculo de poder
+              child: Icon(
+                _isTracking ? Icons.stop : Icons.play_arrow,
+              ), // Círculo de poder
             ),
           ),
         ],

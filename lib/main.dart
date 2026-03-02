@@ -6,6 +6,8 @@ import 'features/layout/main_skeleton.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'features/auth/presentation/location_permission_screen.dart';
+import 'package:provider/provider.dart';
+import 'features/home/providers/run_state_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +21,14 @@ void main() async {
     debugPrint("Error inicializando Firebase (¿Faltan archivos de config?): $e");
   }
 
-  runApp(const SmartSyncApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => RunStateProvider()),
+      ],
+      child: const SmartSyncApp(),
+    ),
+  );
 }
 
 class SmartSyncApp extends StatelessWidget {

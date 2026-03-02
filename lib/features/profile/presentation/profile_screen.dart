@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/data/firebase_auth_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -139,7 +140,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.qr_code_scanner),
-              onPressed: () {}, // Future feature
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Center(
+                      child: Text(
+                        'Tu Código de Corredor',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize
+                          .min, // Para que no ocupe toda la pantalla
+                      children: [
+                        const Text(
+                          'Muestra este código al Staff para recibir tu Kit.',
+                        ),
+                        const SizedBox(height: 20),
+                        // AQUÍ SE GENERA EL QR MÁGICAMENTE
+                        SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: QrImageView(
+                            data: user.uid, // <-- EL ID ÚNICO DE FIREBASE
+                            version: QrVersions.auto,
+                            size: 200.0,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape:
+                                  QrEyeShape.square, // Le da un toque más tech
+                              color: Color(
+                                0xFF0D47A1,
+                              ), // Usamos tu color primario
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.circle,
+                              color: Color(0xFF0D47A1),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Opcional: Mostrar el ID en texto pequeño por si el lector falla
+                        Text(
+                          user.uid,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             if (_isLoading) const CircularProgressIndicator(),
           ],

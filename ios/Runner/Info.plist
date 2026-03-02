@@ -2,6 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SmartSync necesita tu ubicación para mostrarte en el mapa de la carrera.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SmartSync requiere acceso a tu ubicación en segundo plano para registrar tu ruta oficial durante la carrera, incluso si guardas el teléfono con la pantalla apagada.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SmartSync requiere acceso a tu ubicación en segundo plano para registrar tu ruta oficial durante la carrera, incluso si guardas el teléfono con la pantalla apagada.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

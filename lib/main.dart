@@ -4,6 +4,8 @@ import 'features/auth/data/firebase_auth_service.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/layout/main_skeleton.dart';
 import 'features/splash/presentation/splash_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'features/auth/presentation/location_permission_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,7 +95,24 @@ class _AppRootState extends State<_AppRoot> {
           if (user == null) {
             return const LoginScreen();
           }
-           return const MainSkeleton();
+          return FutureBuilder<LocationPermission>(
+            future: Geolocator.checkPermission(),
+            builder: (context, permissionSnapshot) {
+              if (permissionSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              
+              // Si ya le concedió permiso "WhileInUse" o "Always", pasa libremente
+              if (permissionSnapshot.data == LocationPermission.always || 
+                  permissionSnapshot.data == LocationPermission.whileInUse) {
+                return const MainSkeleton();
+              }
+              
+              // Si está denegado o no lo ha pedido, lo forzamos a ver la pantalla de Onboarding.
+              return const LocationPermissionScreen();
+            },
+          );
+
         }
 
         // Mientras carga el estado de auth (transición invisible)

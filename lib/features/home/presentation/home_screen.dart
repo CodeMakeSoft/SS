@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 3,
+      distanceFilter: 1,
     );
 
     _positionStreamSubscription =

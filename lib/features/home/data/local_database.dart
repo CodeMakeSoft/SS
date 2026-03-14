@@ -24,7 +24,6 @@ class LocalDatabase {
   }
 
   Future _createDB(Database db, int version) async {
-    // Creamos la tabla donde se guardarán los puntos del mapa (Offline)
     await db.execute('''
       CREATE TABLE location_points (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +36,6 @@ class LocalDatabase {
     ''');
   }
 
-  // MÉTODO 1: Guardar un punto del GPS
   Future<void> insertLocation(double lat, double lon, double speed) async {
     final db = await instance.database;
     await db.insert('location_points', {
@@ -49,13 +47,11 @@ class LocalDatabase {
     });
   }
 
-  // MÉTODO 2: Obtener puntos que NO se han subido a Firebase
   Future<List<Map<String, dynamic>>> getUnsyncedLocations() async {
     final db = await instance.database;
     return await db.query('location_points', where: 'is_synced = ?', whereArgs: [0], orderBy: 'timestamp ASC');
   }
 
-  // MÉTODO 3: Marcar puntos como "Ya subidos"
   Future<void> markAsSynced(List<int> ids) async {
     if (ids.isEmpty) return;
     final db = await instance.database;
@@ -67,7 +63,6 @@ class LocalDatabase {
     );
   }
 
-  // MÉTODO 4: Limpiar la tabla (Al terminar la carrera)
   Future<void> clearRunData() async {
     final db = await instance.database;
     await db.delete('location_points');

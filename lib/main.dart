@@ -8,14 +8,12 @@ import 'package:geolocator/geolocator.dart';
 import 'features/auth/presentation/location_permission_screen.dart';
 import 'package:provider/provider.dart';
 import 'features/home/providers/run_state_provider.dart';
+import 'features/home/providers/user_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Inicialización de Firebase. 
-    // Asegúrate de haber agregado google-services.json (Android) 
-    // y GoogleService-Info.plist (iOS).
     await Firebase.initializeApp();
   } catch (e) {
     debugPrint("Error inicializando Firebase (¿Faltan archivos de config?): $e");
@@ -25,6 +23,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => RunStateProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: const SmartSyncApp(),
     ),

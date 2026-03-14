@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class LocationSyncService {
+  static final LocationSyncService instance = LocationSyncService(LocalDatabase.instance);
   final LocalDatabase _localDatabase;
 
   LocationSyncService(this._localDatabase);

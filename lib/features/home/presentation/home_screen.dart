@@ -2,9 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:smartsync/features/home/data/location_sync_service.dart';
 import '../data/local_database.dart';
 import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../providers/run_state_provider.dart';
+import '../../profile/data/models/user_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _startTracking() {
+  void _startTracking(bool isTrialUser, String? raceId) {
     setState(() => _isTracking = true);
     Provider.of<RunStateProvider>(
       context,
@@ -90,6 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
               position.longitude,
               position.speed,
             );
+            if(!isTrialUser && raceId != null) {
+              LocationSyncService.instance.syncLocations(raceId);
+            }
 
             setState(() {
               _routePoints.add(newPoint);
@@ -127,6 +133,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final user = userProvider.userData;
+    bool isAdmin = user?.role == 'admin' || user?.role == 'super_admin' || user?.role == 'sudo';
+    bool hasActiveRace = user?.activeRaceId != null;
+    bool isTrial = user?.role == 'trial' || (!isAdmin && !hasActiveRace);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       // No AppBar, using custom header
@@ -228,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (_isTracking) {
                   _stopTracking();
                 } else {
-                  _startTracking();
+                  _startTracking(isTrial, user?.activeRaceId);
                 }
               },
               backgroundColor: _isTracking

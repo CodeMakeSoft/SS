@@ -1,11 +1,14 @@
-
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:io';
 import '../auth/data/firebase_auth_service.dart';
 import '../home/presentation/home_screen.dart';
 import '../profile/presentation/profile_screen.dart';
+import '../home/presentation/admin_races_screen.dart';
+import '../home/presentation/admin_management_screen.dart';
 import '../stats/presentation/stats_screen.dart';
+import '../home/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class MainSkeleton extends StatefulWidget {
   const MainSkeleton({super.key});
@@ -18,10 +21,21 @@ class _MainSkeletonState extends State<MainSkeleton> {
   int _currentIndex = 0;
   final FirebaseAuthService _authService = FirebaseAuthService();
 
-  final List<Widget> _screens = [
+  final List<Widget> _screensUserAndTrial = [
     const HomeScreen(),
     const StatsScreen(),
     const ProfileScreen(),
+  ];
+
+  final List<Widget> _screensAdmins = [
+    const AdminRacesScreen(),
+    const AdminManagementScreen(),
+    const ProfileScreen(),
+  ];
+
+  final List<Widget> _screensSudo = [
+    const ProfileScreen(),
+    //Pending to development and defining this part
   ];
 
   @override
@@ -79,7 +93,17 @@ class _MainSkeletonState extends State<MainSkeleton> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.userData;
+    final bool isAdmin = user?.role == 'admin' || user?.role == 'super_admin';
+    final bool isSudo = user?.role == 'sudo';
     final theme = Theme.of(context);
+    final List<Widget> currentScreens = isSudo 
+    ? _screensSudo 
+    : (isAdmin ? _screensAdmins : _screensUserAndTrial);
+    if(_currentIndex >= currentScreens.length) {
+      _currentIndex = 0;
+    }
     
     return Scaffold(
       extendBody: true, // Allows body to go behind the bar (Transparency)
@@ -88,7 +112,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
           // Main Content
           IndexedStack(
             index: _currentIndex,
-            children: _screens,
+            children: currentScreens,
           ),
           
           // Custom Tech Navigation Bar
@@ -117,9 +141,17 @@ class _MainSkeletonState extends State<MainSkeleton> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildNavItem(0, Icons.map_outlined, Icons.map, "Mapa"),
-                      _buildNavItem(1, Icons.bar_chart_outlined, Icons.bar_chart, "Stats"),
-                      _buildNavItem(2, Icons.person_outline, Icons.person, "Perfil"),
+                      if (isSudo)
+                        _buildNavItem(0, Icons.person_outline, Icons.person, "Perfil")
+                      else if (isAdmin) ...[
+                        _buildNavItem(0, Icons.radar, Icons.radar_sharp, "Carreras"),
+                        _buildNavItem(1, Icons.qr_code_scanner, Icons.qr_code_scanner, "Gestión"),
+                        _buildNavItem(2, Icons.person_outline, Icons.person, "Perfil"),
+                      ] else ...[
+                        _buildNavItem(0, Icons.map_outlined, Icons.map, "Mapa"),
+                        _buildNavItem(1, Icons.bar_chart_outlined, Icons.bar_chart, "Stats"),
+                        _buildNavItem(2, Icons.person_outline, Icons.person, "Perfil"),
+                      ],
                     ],
                   ),
                 ),
@@ -151,25 +183,20 @@ class _MainSkeletonState extends State<MainSkeleton> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon with Glow if selected
             Icon(
               isSelected ? iconFilled : iconOutlined,
-              color: isSelected ? theme.colorScheme.secondary : Colors.grey[400],
-              size: 26,
+              color: isSelected ? theme.colorScheme.primary : Colors.white70,
             ),
-            
-            // Label Animation
             if (isSelected) ...[
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: theme.colorScheme.secondary,
+                  color: theme.colorScheme.primary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
                 ),
               ),
-            ]
+            ],
           ],
         ),
       ),

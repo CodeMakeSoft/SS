@@ -106,10 +106,10 @@ class _MainSkeletonState extends State<MainSkeleton> {
     }
     
     return Scaffold(
-      extendBody: true, // Allows body to go behind the bar (Transparency)
+      resizeToAvoidBottomInset: false,
+      extendBody: true,
       body: Stack(
         children: [
-          // Main Content
           IndexedStack(
             index: _currentIndex,
             children: currentScreens,

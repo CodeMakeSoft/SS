@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -23,29 +22,26 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<User?> signInWithGoogle() async {
     try {
-      // 1. Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // User canceled
+      if (googleUser == null) return null;
 
-      // 2. Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // 3. Create a new credential
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Sign in to Firebase with the credential
       final UserCredential userCredential = 
           await _firebaseAuth.signInWithCredential(credential);
       
       final user = userCredential.user;
       if (user != null) {
-        await _ensureUserDocumentExists(user);
+        String? googleName = userCredential.additionalUserInfo?.profile?['name'];
+        await _ensureUserDocumentExists(user, providedName: googleName);
         bool isAllowed = await _checkIfUserIsAllowed(user.email);
         if (!isAllowed) {
-          await signOut(); // Kick them out immediately
+          await signOut();
           throw FirebaseAuthException(
             code: 'user-not-allowed',
             message: 'Tu cuenta no está registrada por un administrador.',
@@ -76,7 +72,8 @@ class FirebaseAuthService implements AuthService {
 
         final user = userCredential.user;
         if (user != null) {
-          await _ensureUserDocumentExists(user);
+          String? facebookName = userCredential.additionalUserInfo?.profile?['name'];
+          await _ensureUserDocumentExists(user, providedName: facebookName);
           bool isAllowed = await _checkIfUserIsAllowed(user.email);
           if (!isAllowed) {
             await signOut();
@@ -101,7 +98,6 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<User?> signInWithEmailAndPassword(String email, String password) async {
     try {
-      // 1. Sign in with email and password
       final UserCredential userCredential = 
           await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
@@ -201,18 +197,71 @@ class FirebaseAuthService implements AuthService {
     */
   }
 
-  Future<void> _ensureUserDocumentExists(User user) async {
+  Future<void> _ensureUserDocumentExists(User user, {String? providedName}) async {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     
+    bool isValid(String? n) => n != null && n.trim().isNotEmpty && n != 'Usuario';
+
+    String cleanName = 'Usuario';
+    if (isValid(providedName)) {
+      cleanName = providedName!;
+    } else if (isValid(user.displayName)) {
+      cleanName = user.displayName!;
+    }
+
     if (!userDoc.exists) {
-      // Si no existe, lo creamos con rol 'trial' por defecto
       await _firestore.collection('users').doc(user.uid).set({
-        'displayName': user.displayName ?? 'Usuario Nuevo',
+        'displayName': cleanName,
         'email': user.email,
-        'role': 'trial', // O el rol que decidas por defecto
+        'role': 'trial',
+        'isNameCustomized': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
+    } else {
+      final data = userDoc.data();
+      bool alreadyCustomized = data?['isNameCustomized'] ?? false;
+      String currentName = data?['displayName'] ?? '';
+
+      if (!alreadyCustomized && !isValid(currentName) && isValid(cleanName)) {
+        await _firestore.collection('users').doc(user.uid).update({
+          'displayName': cleanName,
+        });
+      }
     }
+  }
+
+  Future<void> updateDisplayName(String newName) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw Exception("No hay usuario autenticado");
+
+    final trimmedName = newName.trim();
+    
+    if (trimmedName.length > 20) {
+      throw Exception("El nombre es demasiado largo (máximo 20 caracteres).");
+    }
+
+    final wordCount = trimmedName.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    if (wordCount > 2) {
+      throw Exception("Solo se permiten máximo 2 palabras (Nombre y Apellido).");
+    }
+
+    if (trimmedName.isEmpty) {
+      throw Exception("El nombre no puede estar vacío.");
+    }
+
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final data = userDoc.data();
+
+    if (data != null && (data['isNameCustomized'] ?? false)) {
+      throw Exception("Ya has personalizado tu nombre anteriormente.");
+    }
+
+    await user.updateDisplayName(trimmedName);
+    
+    await _firestore.collection('users').doc(user.uid).update({
+      'displayName': trimmedName,
+      'isNameCustomized': true,
+    });
   }
 
   Future<Never> _handleAccountExistsError(FirebaseAuthException e) async {

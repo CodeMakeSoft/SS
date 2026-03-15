@@ -29,7 +29,20 @@ class UserProvider extends ChangeNotifier {
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
-        _userData = UserModel.fromMap(snapshot.data()!, snapshot.id);
+        final data = snapshot.data()!;
+        _userData = UserModel.fromMap(data, snapshot.id);
+        
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null && currentUser.displayName != null && currentUser.displayName!.isNotEmpty) {
+          bool alreadyCustomized = data['isNameCustomized'] ?? false;
+          String dbName = data['displayName'] ?? '';
+
+          if (!alreadyCustomized && (dbName == 'Usuario' || dbName.trim().isEmpty)) {
+            FirebaseFirestore.instance.collection('users').doc(uid).update({
+              'displayName': currentUser.displayName,
+            });
+          }
+        }
         notifyListeners();
       }
     });

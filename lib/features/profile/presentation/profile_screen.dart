@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../auth/data/firebase_auth_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../home/providers/user_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -90,24 +92,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _showEditNameDialog(BuildContext context, String currentName) {
+    final TextEditingController controller = TextEditingController(text: currentName == 'Usuario' ? '' : currentName);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          "Personalizar Nombre",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Podrás personalizarlo una única vez. Usa máximo 2 palabras.",
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 20,
+              decoration: InputDecoration(
+                labelText: "Nombre y Apellido",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.person_outline),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D47A1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              try {
+                await FirebaseAuthService().updateDisplayName(controller.text);
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Nombre personalizado con éxito'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceAll("Exception: ", "")),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Guardar", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuthService().currentUser;
+    final userProvider = context.watch<UserProvider>();
+    final appUser = userProvider.userData; 
+    final authUser = FirebaseAuthService().currentUser; 
     final theme = Theme.of(context);
 
-    if (user == null) return const SizedBox.shrink();
+    if (authUser == null) return const Center(child: CircularProgressIndicator());
+    String? displayName = authUser.displayName;
+    String? displayPhoto = authUser.photoURL;
+    
 
-    user.reload();
-    final linkedProviders = user.providerData.map((e) => e.providerId).toList();
+    authUser.reload();
+    final linkedProviders = authUser.providerData.map((e) => e.providerId).toList();
     bool hasGoogle = linkedProviders.contains('google.com');
     bool hasFacebook = linkedProviders.contains('facebook.com');
 
-    String? displayPhoto = user.photoURL;
-    String? displayName = user.displayName;
-
     // Fallback: If Firebase root user lacks photo but a linked provider has it
     if (displayPhoto == null || displayPhoto.isEmpty) {
-      for (var provider in user.providerData) {
+      for (var provider in authUser.providerData) {
         if (provider.photoURL != null && provider.photoURL!.isNotEmpty) {
           displayPhoto = provider.photoURL;
           break;
@@ -117,13 +191,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Fallback: If Firebase root lacks Name but a linked provider has it
     if (displayName == null || displayName.isEmpty) {
-      for (var provider in user.providerData) {
+      for (var provider in authUser.providerData) {
         if (provider.displayName != null && provider.displayName!.isNotEmpty) {
           displayName = provider.displayName;
           break;
         }
       }
     }
+
+    // Usamos el nombre de Firestore (appUser) por encima del de Auth para consistencia con el Admin
+    final finalDisplayName = appUser?.displayName ?? displayName ?? 'Usuario';
 
     return IgnorePointer(
       ignoring: _isLoading,
@@ -167,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 200,
                           height: 200,
                           child: QrImageView(
-                            data: user.uid, // <-- EL ID ÚNICO DE FIREBASE
+                            data: authUser.uid, // <-- EL ID ÚNICO DE FIREBASE
                             version: QrVersions.auto,
                             size: 200.0,
                             eyeStyle: const QrEyeStyle(
@@ -186,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 10),
                         // Opcional: Mostrar el ID en texto pequeño por si el lector falla
                         Text(
-                          user.uid,
+                          authUser.uid,
                           style: const TextStyle(
                             fontSize: 10,
                             color: Colors.grey,
@@ -270,24 +347,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            (displayName != null && displayName.isNotEmpty)
-                                ? displayName
-                                : 'Usuario',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  finalDisplayName,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!(appUser?.isNameCustomized ?? false))
+                                IconButton(
+                                  icon: const Icon(Icons.edit_note, color: Colors.white70, size: 22),
+                                  onPressed: () => _showEditNameDialog(context, finalDisplayName),
+                                  tooltip: 'Personalizar nombre',
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            user.email ?? '',
+                            authUser.email ?? '',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white.withOpacity(0.9),
-                              fontFamily:
-                                  'RobotoMono', // Tech font hint if available
+                              fontFamily: 'RobotoMono',
                             ),
                           ),
                           const SizedBox(height: 8),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'create_race_screen.dart';
 
 class AdminManagementScreen extends StatelessWidget {
   const AdminManagementScreen({super.key});
@@ -55,17 +56,22 @@ class AdminManagementScreen extends StatelessWidget {
                 delegate: SliverChildListDelegate([
                   _buildActionCard(
                     context,
-                    title: "Crear Nuevo Evento",
-                    subtitle: "Configura rutas y oleadas de salida.",
+                    title: "Crear Nueva Carrera",
+                    subtitle: "Configura rutas.",
                     icon: Icons.add_circle_outline_rounded,
                     color: const Color(0xFF0D47A1),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CreateRaceScreen()),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   _buildActionCard(
                     context,
                     title: "Vincular Corredores",
-                    subtitle: "Escanea el QR para dar el alta oficial.",
+                    subtitle: "Escanea el QR.",
                     icon: Icons.qr_code_scanner_rounded,
                     color: const Color(0xFF00B0FF),
                     onTap: () {},

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../data/race_service.dart';
+import '../data/models/race_model.dart';
+import 'package:intl/intl.dart';
 
 class AdminRacesScreen extends StatelessWidget {
   const AdminRacesScreen({super.key});
@@ -41,17 +43,14 @@ class AdminRacesScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('races')
-                    .where('status', isEqualTo: 'active')
-                    .snapshots(),
+              child: StreamBuilder<List<RaceModel>>(
+                stream: RaceService.instance.getActiveRaces(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   
-                  final races = snapshot.data?.docs ?? [];
+                  final races = snapshot.data ?? [];
                   
                   if (races.isEmpty) {
                     return Center(
@@ -61,7 +60,7 @@ class AdminRacesScreen extends StatelessWidget {
                           Icon(Icons.radar_outlined, size: 80, color: Colors.grey[300]),
                           const SizedBox(height: 16),
                           Text(
-                            "Sin eventos activos en este momento",
+                            "Sin eventos activos o próximos",
                             style: TextStyle(color: Colors.grey[500], fontSize: 16),
                           ),
                         ],
@@ -73,8 +72,7 @@ class AdminRacesScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     itemCount: races.length,
                     itemBuilder: (context, index) {
-                      final raceData = races[index].data() as Map<String, dynamic>;
-                      return _buildRaceCard(context, raceData, races[index].id);
+                      return _buildRaceCard(context, races[index]);
                     },
                   );
                 },
@@ -86,7 +84,13 @@ class AdminRacesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRaceCard(BuildContext context, Map<String, dynamic> data, String id) {
+  Widget _buildRaceCard(BuildContext context, RaceModel race) {
+    final theme = Theme.of(context);
+    final bool isOngoing = race.status == 'ongoing';
+    final String statusText = isOngoing ? 'En Curso' : 'Programada';
+    final Color statusColor = isOngoing ? Colors.green : Colors.blue;
+    final String dateStr = DateFormat('dd MMM yyyy').format(race.date);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -114,10 +118,14 @@ class AdminRacesScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.flash_on_rounded, color: Colors.green, size: 24),
+                  child: Icon(
+                    isOngoing ? Icons.flash_on_rounded : Icons.calendar_today_rounded, 
+                    color: statusColor, 
+                    size: 24
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -125,7 +133,7 @@ class AdminRacesScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        data['name'] ?? 'Carrera Activa',
+                        race.name,
                         style: const TextStyle(
                           color: Color(0xFF263238),
                           fontSize: 16,
@@ -134,7 +142,7 @@ class AdminRacesScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Rastreo en curso • ID: ${id.substring(0, 5)}...",
+                        "$statusText • $dateStr",
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontSize: 12,
@@ -146,13 +154,13 @@ class AdminRacesScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: theme.colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    "VER RADAR",
+                  child: Text(
+                    isOngoing ? "VER RADAR" : "GESTIONAR",
                     style: TextStyle(
-                      color: Color(0xFF0D47A1),
+                      color: theme.colorScheme.primary,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),

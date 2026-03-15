@@ -5,117 +5,155 @@ class AdminManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Dark Tech Blue
+      backgroundColor: const Color(0xFFF5F7FA), // Fondo limpio
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "CENTRO DE GESTIÓN",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2.0,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "ADMINISTRACIÓN",
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Gestión de Campo",
+                      style: TextStyle(
+                        color: Color(0xFF263238),
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Controla los eventos y vincula corredores mediante escaneo QR.",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                "Administración de eventos y corredores en campo.",
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildActionCard(
+                    context,
+                    title: "Crear Nuevo Evento",
+                    subtitle: "Configura rutas y oleadas de salida.",
+                    icon: Icons.add_circle_outline_rounded,
+                    color: const Color(0xFF0D47A1),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionCard(
+                    context,
+                    title: "Vincular Corredores",
+                    subtitle: "Escanea el QR para dar el alta oficial.",
+                    icon: Icons.qr_code_scanner_rounded,
+                    color: const Color(0xFF00B0FF),
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionCard(
+                    context,
+                    title: "Configuración de Cronómetro",
+                    subtitle: "Sincroniza el tiempo oficial de la carrera.",
+                    icon: Icons.timer_outlined,
+                    color: Colors.orange[800]!,
+                    onTap: () {},
+                  ),
+                ]),
               ),
-              const SizedBox(height: 40),
-              
-              // Botón 1: Crear Evento
-              _buildActionCard(
-                title: "Nuevo Evento",
-                subtitle: "Define nombre, waves y activa el radar.",
-                icon: Icons.add_to_photos_outlined,
-                color: const Color(0xFF00B0FF), // Cyan
-                onTap: () {
-                  // TODO: Abrir formulario de creación
-                },
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Botón 2: Scanner QR
-              _buildActionCard(
-                title: "Vincular Corredores",
-                subtitle: "Escanea el UID para dar de alta en carrera.",
-                icon: Icons.qr_code_scanner_rounded,
-                color: Colors.greenAccent,
-                onTap: () {
-                   // IMPORTANTE: Aquí necesitarás el paquete 'mobile_scanner'
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildActionCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withOpacity(0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 32),
-            ),
-            const SizedBox(width: 25),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Color(0xFF263238),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, 
+                     color: Colors.grey[300], size: 16),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: Colors.white24),
-          ],
+          ),
         ),
       ),
     );

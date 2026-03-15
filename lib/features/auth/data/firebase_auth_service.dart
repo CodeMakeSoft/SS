@@ -42,7 +42,7 @@ class FirebaseAuthService implements AuthService {
       
       final user = userCredential.user;
       if (user != null) {
-        // 5. Validation: Check if user is allowed (registered by admin)
+        await _ensureUserDocumentExists(user);
         bool isAllowed = await _checkIfUserIsAllowed(user.email);
         if (!isAllowed) {
           await signOut(); // Kick them out immediately
@@ -76,6 +76,7 @@ class FirebaseAuthService implements AuthService {
 
         final user = userCredential.user;
         if (user != null) {
+          await _ensureUserDocumentExists(user);
           bool isAllowed = await _checkIfUserIsAllowed(user.email);
           if (!isAllowed) {
             await signOut();
@@ -109,7 +110,7 @@ class FirebaseAuthService implements AuthService {
 
       final user = userCredential.user;
       if (user != null) {
-        // 2. Validation: Check if user is allowed
+        await _ensureUserDocumentExists(user);
         bool isAllowed = await _checkIfUserIsAllowed(user.email);
         if (!isAllowed) {
           await signOut();
@@ -198,6 +199,20 @@ class FirebaseAuthService implements AuthService {
 
     return result.docs.isNotEmpty;
     */
+  }
+
+  Future<void> _ensureUserDocumentExists(User user) async {
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    
+    if (!userDoc.exists) {
+      // Si no existe, lo creamos con rol 'trial' por defecto
+      await _firestore.collection('users').doc(user.uid).set({
+        'displayName': user.displayName ?? 'Usuario Nuevo',
+        'email': user.email,
+        'role': 'trial', // O el rol que decidas por defecto
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   Future<Never> _handleAccountExistsError(FirebaseAuthException e) async {

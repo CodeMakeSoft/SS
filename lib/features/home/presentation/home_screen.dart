@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Default position: Mexico City (or user's country)
   static const CameraPosition _initialPosition = CameraPosition(
     target: LatLng(19.4326, -99.1332),
-    zoom: 14.4746,
+    zoom: 16,
   );
 
   bool _locationPermissionGranted = true;
@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(position.latitude, position.longitude),
-            zoom: 17,
+            zoom: 20,
           ),
         ),
       );

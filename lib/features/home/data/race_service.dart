@@ -8,12 +8,10 @@ class RaceService {
   static final RaceService instance = RaceService._internal();
   RaceService._internal();
 
-  /// Crea una nueva carrera en Firestore
   Future<void> createRace(RaceModel race) async {
     await _firestore.collection('races').doc(race.raceId).set(race.toMap());
   }
 
-  /// Obtiene un stream de las carreras activas u próximas
   Stream<List<RaceModel>> getActiveRaces() {
     return _firestore
         .collection('races')
@@ -24,7 +22,6 @@ class RaceService {
             .toList());
   }
 
-  /// Actualiza el estado de una carrera
   Future<void> updateRaceStatus(String raceId, String newStatus) async {
     await _firestore.collection('races').doc(raceId).update({
       'status': newStatus,
@@ -32,4 +29,17 @@ class RaceService {
       if (newStatus == 'finished') 'endTime': FieldValue.serverTimestamp(),
     });
   }
+
+Future<void> linkUserToRace(String raceId, String userId) async {
+  final batch = _firestore.batch();
+  
+  batch.update(_firestore.collection('races').doc(raceId), {
+    'participants': FieldValue.arrayUnion([userId]),
+  });
+  
+  batch.update(_firestore.collection('users').doc(userId), {
+    'activeRaceId': raceId,
+  });
+  await batch.commit();
+}
 }

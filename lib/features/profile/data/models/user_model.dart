@@ -9,6 +9,7 @@ class UserModel {
   final String? activeBibNumber;
   final String? activeRaceId;
   final List<String> friends;
+  final List<String> history;
 
   UserModel({
     required this.uid,
@@ -19,6 +20,7 @@ class UserModel {
     this.activeBibNumber,
     this.activeRaceId,
     this.friends = const [],
+    this.history = const [],
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -31,6 +33,7 @@ class UserModel {
       activeBibNumber: data['activeBibNumber'],
       activeRaceId: data['activeRaceId'],
       friends:List<String>.from(data['friends'] ?? []),
+      history:List<String>.from(data['history'] ?? []),
     );
   }
 
@@ -43,6 +46,7 @@ class UserModel {
       'activeBibNumber': activeBibNumber,
       'activeRaceId': activeRaceId,
       'friends': friends,
+      'history': history,
     };
   }
 }

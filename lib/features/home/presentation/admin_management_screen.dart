@@ -29,16 +29,16 @@ class AdminManagementScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      "Gestión de Campo",
+                      "Gestión de Carreras",
                       style: TextStyle(
                         color: Color(0xFF263238),
-                        fontSize: 32,
+                        fontSize: 25,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      "Controla los eventos y vincula corredores mediante escaneo QR.",
+                      "Controla los eventos y vincula corredores.",
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 15,

@@ -33,7 +33,7 @@ class AdminRacesScreen extends StatelessWidget {
                     "Radar en Vivo",
                     style: TextStyle(
                       color: Color(0xFF263238),
-                      fontSize: 32,
+                      fontSize: 25,
                       fontWeight: FontWeight.w900,
                     ),
                   ),

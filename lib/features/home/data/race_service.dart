@@ -30,16 +30,29 @@ class RaceService {
     });
   }
 
-Future<void> linkUserToRace(String raceId, String userId) async {
-  final batch = _firestore.batch();
-  
-  batch.update(_firestore.collection('races').doc(raceId), {
-    'participants': FieldValue.arrayUnion([userId]),
-  });
-  
-  batch.update(_firestore.collection('users').doc(userId), {
-    'activeRaceId': raceId,
-  });
-  await batch.commit();
-}
+  Future<void> linkUserToRace(String raceId, String userId) async {
+    final batch = _firestore.batch();
+    
+    batch.update(_firestore.collection('races').doc(raceId), {
+      'participants': FieldValue.arrayUnion([userId]),
+    });
+    
+    batch.update(_firestore.collection('users').doc(userId), {
+      'activeRaceId': raceId,
+    });
+    await batch.commit();
+  }
+
+  Future<void> unlinkUserFromRace(String raceId, String userId) async {
+    final batch = _firestore.batch();
+    
+    batch.update(_firestore.collection('races').doc(raceId), {
+      'participants': FieldValue.arrayRemove([userId]),
+    });
+    
+    batch.update(_firestore.collection('users').doc(userId), {
+      'activeRaceId': null,
+    });
+    await batch.commit();
+  }
 }

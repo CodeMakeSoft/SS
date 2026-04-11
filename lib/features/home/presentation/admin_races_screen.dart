@@ -42,7 +42,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Radar Maestro",
+                    "God Mode",
                     style: TextStyle(
                       color: Color(0xFF263238),
                       fontSize: 28,

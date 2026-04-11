@@ -236,7 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .min, // Para que no ocupe toda la pantalla
                       children: [
                         const Text(
-                          'Muestra este código al Staff para recibir tu Kit.',
+                          'Muestra este código al Staff para ser vinculado a una carrera.',
                         ),
                         const SizedBox(height: 20),
                         // AQUÍ SE GENERA EL QR MÁGICAMENTE
@@ -516,7 +516,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 40),
               Center(
                 child: Text(
-                  'v1.0.0 • SmartSync Tech',
+                  'v1.0.0 • SmartSync',
                   style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 ),
               ),

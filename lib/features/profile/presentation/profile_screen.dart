@@ -3,6 +3,7 @@ import '../../auth/data/firebase_auth_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../home/providers/user_provider.dart';
+import '../../home/providers/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -205,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return IgnorePointer(
       ignoring: _isLoading,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA), // Light Tech Grey background
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
           title: const Text(
             'ID de Usuario',
@@ -220,64 +221,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    title: const Center(
-                      child: Text(
-                        'Tu Código de Corredor',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                  builder: (context) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return AlertDialog(
+                      backgroundColor: theme.colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: isDark ? const BorderSide(color: Colors.white10) : BorderSide.none,
                       ),
-                    ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize
-                          .min, // Para que no ocupe toda la pantalla
-                      children: [
-                        const Text(
-                          'Muestra este código al Staff para ser vinculado a una carrera.',
-                        ),
-                        const SizedBox(height: 20),
-                        // AQUÍ SE GENERA EL QR MÁGICAMENTE
-                        SizedBox(
-                          width: 200,
-                          height: 200,
-                          child: QrImageView(
-                            data: authUser.uid, // <-- EL ID ÚNICO DE FIREBASE
-                            version: QrVersions.auto,
-                            size: 200.0,
-                            eyeStyle: const QrEyeStyle(
-                              eyeShape:
-                                  QrEyeShape.square, // Le da un toque más tech
-                              color: Color(
-                                0xFF0D47A1,
-                              ), // Usamos tu color primario
-                            ),
-                            dataModuleStyle: const QrDataModuleStyle(
-                              dataModuleShape: QrDataModuleShape.circle,
-                              color: Color(0xFF0D47A1),
-                            ),
+                      title: Center(
+                        child: Text(
+                          'Tu Código',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        // Opcional: Mostrar el ID en texto pequeño por si el lector falla
-                        Text(
-                          authUser.uid,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Muestra este código al Staff para ser vinculado a una carrera.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                           ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: 200,
+                            height: 200,
+                            child: QrImageView(
+                              data: authUser.uid,
+                              version: QrVersions.auto,
+                              size: 200.0,
+                              eyeStyle: QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: isDark ? Colors.blueAccent : const Color(0xFF0D47A1),
+                              ),
+                              dataModuleStyle: QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.circle,
+                                color: isDark ? Colors.white : const Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            authUser.uid,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cerrar'),
                         ),
                       ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -410,7 +414,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -464,7 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -480,16 +484,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: theme.brightness == Brightness.dark ? Colors.white10 : Colors.grey[100],
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.notifications_outlined,
-                          color: Colors.black87,
+                          color: theme.brightness == Brightness.dark ? Colors.white70 : Colors.black87,
                         ),
                       ),
                       title: const Text('Notificaciones'),
                       trailing: Switch(value: true, onChanged: (v) {}),
+                    ),
+                    const Divider(height: 1),
+                    // MODO OSCURO TOGGLE
+                    Consumer<ThemeProvider>(
+                      builder: (context, themeProvider, child) {
+                        return ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: themeProvider.isDarkMode 
+                                ? Colors.indigoAccent.withOpacity(0.1) 
+                                : Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              themeProvider.isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                              color: themeProvider.isDarkMode ? Colors.indigoAccent : Colors.amber,
+                            ),
+                          ),
+                          title: const Text('Modo Oscuro'),
+                          trailing: Switch(
+                            value: themeProvider.isDarkMode,
+                            onChanged: (isOn) => themeProvider.toggleTheme(isOn),
+                            activeColor: Colors.indigoAccent,
+                          ),
+                        );
+                      },
                     ),
                     const Divider(height: 1),
                     ListTile(

@@ -17,8 +17,11 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // MAPA EN PANTALLA COMPLETA
@@ -33,7 +36,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             mapType: MapType.normal,
           ),
 
-          // CABECERA FLOTANTE CLARA
+          // CABECERA FLOTANTE ADAPTABLE
           Positioned(
             top: 50,
             left: 20,
@@ -45,11 +48,11 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.1), blurRadius: 10)],
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
+                    child: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface, size: 20),
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -57,10 +60,10 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: theme.colorScheme.surface.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-                      border: Border.all(color: Colors.black12),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10)],
+                      border: Border.all(color: theme.dividerColor),
                     ),
                     child: Row(
                       children: [
@@ -69,8 +72,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                         Expanded(
                           child: Text(
                             widget.race.name.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF0F172A), 
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface, 
                               fontWeight: FontWeight.bold, 
                               letterSpacing: 1.1,
                               fontSize: 14
@@ -86,7 +89,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             ),
           ),
 
-          // PANEL DE CONTROL INFERIOR CLARO
+          // PANEL DE CONTROL INFERIOR ADAPTABLE
           Positioned(
             bottom: 40,
             left: 20,
@@ -94,9 +97,9 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(25),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.15), blurRadius: 20)],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -107,8 +110,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     children: [
                       Text(widget.race.status.toUpperCase(), 
                         style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10)),
-                      const Text("GESTIÓN EN VIVO", 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A))),
+                      Text("GESTIÓN EN VIVO", 
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),
                     ],
                   ),
                   ElevatedButton.icon(
@@ -118,7 +121,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     icon: const Icon(Icons.qr_code_scanner),
                     label: const Text("VINCULAR"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
+                      backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

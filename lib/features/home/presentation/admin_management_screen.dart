@@ -7,41 +7,33 @@ class AdminManagementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Fondo limpio
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              padding: const EdgeInsets.fromLTRB(25, 35, 25, 20),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "ADMINISTRACIÓN",
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
                       "Gestión de Carreras",
                       style: TextStyle(
-                        color: Color(0xFF263238),
-                        fontSize: 25,
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       "Controla los eventos y vincula corredores.",
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -56,6 +48,8 @@ class AdminManagementScreen extends StatelessWidget {
                 delegate: SliverChildListDelegate([
                   _buildActionCard(
                     context,
+                    theme: theme,
+                    isDark: isDark,
                     title: "Crear Nueva Carrera",
                     subtitle: "Configura rutas.",
                     icon: Icons.add_circle_outline_rounded,
@@ -70,6 +64,8 @@ class AdminManagementScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildActionCard(
                     context,
+                    theme: theme,
+                    isDark: isDark,
                     title: "Vincular Corredores",
                     subtitle: "Escanea el QR.",
                     icon: Icons.qr_code_scanner_rounded,
@@ -79,12 +75,15 @@ class AdminManagementScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildActionCard(
                     context,
+                    theme: theme,
+                    isDark: isDark,
                     title: "Configuración de Cronómetro",
                     subtitle: "Sincroniza el tiempo oficial de la carrera.",
                     icon: Icons.timer_outlined,
                     color: Colors.orange[800]!,
                     onTap: () {},
                   ),
+                  const SizedBox(height: 100), // Espacio para el bottom bar
                 ]),
               ),
             ),
@@ -96,6 +95,8 @@ class AdminManagementScreen extends StatelessWidget {
 
   Widget _buildActionCard(
     BuildContext context, {
+    required ThemeData theme,
+    required bool isDark,
     required String title,
     required String subtitle,
     required IconData icon,
@@ -104,15 +105,16 @@ class AdminManagementScreen extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
+        border: isDark ? Border.all(color: Colors.white10) : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -138,8 +140,8 @@ class AdminManagementScreen extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Color(0xFF263238),
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -148,7 +150,7 @@ class AdminManagementScreen extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
                           fontSize: 13,
                         ),
                       ),
@@ -156,7 +158,7 @@ class AdminManagementScreen extends StatelessWidget {
                   ),
                 ),
                 Icon(Icons.arrow_forward_ios_rounded, 
-                     color: Colors.grey[300], size: 16),
+                     color: theme.colorScheme.onSurface.withOpacity(0.1), size: 16),
               ],
             ),
           ),

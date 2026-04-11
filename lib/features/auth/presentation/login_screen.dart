@@ -173,21 +173,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
+    // Dynamic Colors based on Mode
+    final bgColor1 = isDark ? theme.colorScheme.primary.withOpacity(0.8) : const Color(0xFFF5F7FA);
+    final bgColor2 = isDark ? const Color(0xFF000000) : Colors.white;
+    final textColor = isDark ? Colors.white.withOpacity(0.9) : const Color(0xFF0F172A);
+    final subTextColor = isDark ? Colors.white.withOpacity(0.6) : const Color(0xFF64748B);
+    final cardColor = isDark ? Colors.white.withOpacity(0.08) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
+
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface, // Matches theme background
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // 1. Tech Background (Gradient)
+          // 1. Tech Background (Adaptive Gradient)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  theme.colorScheme.primary.withOpacity(0.8),
-                  const Color(0xFF000000), // Deep black bottom
-                ],
+                colors: [bgColor1, bgColor2],
               ),
             ),
           ),
@@ -209,11 +215,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         height: 100,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                          color: isDark ? Colors.white.withOpacity(0.1) : theme.colorScheme.primary.withOpacity(0.05),
+                          border: Border.all(color: borderColor, width: 1),
                           boxShadow: [
                              BoxShadow(
-                               color: theme.colorScheme.secondary.withOpacity(0.3),
+                               color: theme.colorScheme.secondary.withOpacity(isDark ? 0.3 : 0.1),
                                blurRadius: 20,
                                spreadRadius: 5,
                              )
@@ -234,37 +240,45 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 3.0,
-                          color: Colors.white.withOpacity(0.9),
+                          letterSpacing: 4.0,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Acceso al Sistema',
+                        '¡BIENVENIDO!',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.6),
-                          letterSpacing: 1.0,
+                          fontSize: 12,
+                          color: subTextColor,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
                         ),
                       ),
                       
                       const SizedBox(height: 48),
 
-                      // GLASS CARD FORM
+                      // ADAPTIVE CARD FORM
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08), // Glass Effect
+                          color: cardColor,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          border: Border.all(color: borderColor),
+                          boxShadow: isDark ? [] : [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            )
+                          ],
                         ),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // EMAIL
                               _TechInputField(
+                                isDark: isDark,
                                 controller: _emailController,
                                 label: 'Correo Electrónico',
                                 icon: Icons.email_outlined,
@@ -272,8 +286,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               ),
                               const SizedBox(height: 16),
                               
-                              // PASSWORD
                               _TechInputField(
+                                isDark: isDark,
                                 controller: _passwordController,
                                 label: 'Contraseña',
                                 icon: Icons.lock_outline,
@@ -286,29 +300,29 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {
-                                    // TODO
-                                  },
-                                  child: Text('Recuperar clave', style: TextStyle(color: theme.colorScheme.secondary)),
+                                  onPressed: () {},
+                                  child: Text('Recuperar clave', 
+                                    style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                               
                               const SizedBox(height: 16),
                               
-                              // LOGIN BUTTON
                               if (_isLoading)
-                                const Center(child: CircularProgressIndicator(color: Colors.white))
+                                Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
                               else
                                 ElevatedButton(
                                   onPressed: _onEmailLoginPressed,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.secondary,
+                                    backgroundColor: theme.colorScheme.primary,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                    elevation: isDark ? 0 : 5,
+                                    shadowColor: theme.colorScheme.primary.withOpacity(0.3),
                                   ),
-                                  child: const Text('INGRESAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+                                  child: const Text('INGRESAR', 
+                                    style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                                 ),
                             ],
                           ),
@@ -317,39 +331,38 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       
                       const SizedBox(height: 32),
                       
-                      const Row(
+                      Row(
                         children: [
-                          Expanded(child: Divider(color: Colors.white24)),
+                          Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.black12)),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('o continúa con', style: TextStyle(color: Colors.white54)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('o continúa con', style: TextStyle(color: subTextColor, fontSize: 13)),
                           ),
-                          Expanded(child: Divider(color: Colors.white24)),
+                          Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.black12)),
                         ],
                       ),
                       
                       const SizedBox(height: 24),
                       
-                      // SOCIAL BUTTONS
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                            _SocialLoginButton(
                              icon: Icons.g_mobiledata,
                              color: Colors.white,
-                             bgColor: Colors.red[700]!, // Google Red
+                             bgColor: const Color(0xFFDB4437), 
                              onTap: () => _handleLogin(_authService.signInWithGoogle),
                            ),
                            const SizedBox(width: 24),
                            _SocialLoginButton(
                              icon: Icons.facebook,
                              color: Colors.white,
-                             bgColor: const Color(0xFF1877F2), // Facebook Blue
+                             bgColor: const Color(0xFF1877F2),
                              onTap: () => _handleLogin(_authService.signInWithFacebook),
                            ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
@@ -363,6 +376,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 }
 
 class _TechInputField extends StatelessWidget {
+  final bool isDark;
   final TextEditingController controller;
   final String label;
   final IconData icon;
@@ -372,6 +386,7 @@ class _TechInputField extends StatelessWidget {
   final String? Function(String?) validator;
 
   const _TechInputField({
+    required this.isDark,
     required this.controller,
     required this.label,
     required this.icon,
@@ -383,33 +398,44 @@ class _TechInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final inputTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final fillColor = isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC);
+    final labelColor = isDark ? Colors.white.withOpacity(0.5) : const Color(0xFF64748B);
+
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: inputTextColor, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-        prefixIcon: Icon(icon, color: Colors.white70),
+        labelStyle: TextStyle(color: labelColor, fontSize: 14),
+        prefixIcon: Icon(icon, color: labelColor.withOpacity(0.8), size: 20),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(isObscure ? Icons.visibility_off : Icons.visibility, color: Colors.white54),
+                icon: Icon(isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, 
+                  color: labelColor, size: 20),
                 onPressed: onToggleVisibility,
               )
             : null,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: fillColor,
+        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black.withOpacity(0.05)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 2),
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
         ),
       ),
       validator: validator,
@@ -434,22 +460,22 @@ class _SocialLoginButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
-        width: 60,
-        height: 60,
+        width: 55,
+        height: 55,
         decoration: BoxDecoration(
           color: bgColor,
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: bgColor.withOpacity(0.4),
+              color: bgColor.withOpacity(0.3),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Icon(icon, color: color, size: 30),
+        child: Icon(icon, color: color, size: 28),
       ),
     );
   }

@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 import 'features/home/providers/run_state_provider.dart';
 import 'features/home/providers/user_provider.dart';
 
+import 'features/home/providers/theme_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -22,6 +24,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => RunStateProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider(), lazy: false,),
       ],
@@ -36,22 +39,24 @@ class SmartSyncApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = FirebaseAuthService();
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
       title: 'SmartSync Run',
       debugShowCheckedModeBanner: false,
+      themeMode: themeProvider.themeMode,
+      // TEMA CLARO
       theme: ThemeData(
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA), // Clean Background
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), // Deep Tech Blue
+          seedColor: const Color(0xFF0D47A1),
           primary: const Color(0xFF0D47A1),
-          secondary: const Color(0xFF00B0FF), // Cyan Accent
+          secondary: const Color(0xFF00B0FF),
           surface: Colors.white,
-          onSurface: const Color(0xFF263238), // Dark Grey Text
+          onSurface: const Color(0xFF263238),
         ),
         useMaterial3: true,
-        // App Bar Theme
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -59,6 +64,30 @@ class SmartSyncApp extends StatelessWidget {
           iconTheme: IconThemeData(color: Color(0xFF263238)),
           titleTextStyle: TextStyle(
             color: Color(0xFF263238), 
+            fontSize: 20, 
+            fontWeight: FontWeight.bold
+          ),
+        ),
+      ),
+      // TEMA OSCURO
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        colorScheme: ColorScheme.fromSeed(
+          brightness: Brightness.dark,
+          seedColor: const Color(0xFF0D47A1),
+          primary: const Color(0xFF0D47A1),
+          secondary: const Color(0xFF00B0FF),
+          surface: const Color(0xFF1E293B),
+          onSurface: Colors.white,
+        ),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+          titleTextStyle: TextStyle(
+            color: Colors.white, 
             fontSize: 20, 
             fontWeight: FontWeight.bold
           ),

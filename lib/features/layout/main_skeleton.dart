@@ -98,6 +98,8 @@ class _MainSkeletonState extends State<MainSkeleton> {
     final bool isAdmin = user?.role == 'admin' || user?.role == 'super_admin';
     final bool isSudo = user?.role == 'sudo';
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     final List<Widget> currentScreens = isSudo 
     ? _screensSudo 
     : (isAdmin ? _screensAdmins : _screensUserAndTrial);
@@ -115,7 +117,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
             children: currentScreens,
           ),
           
-          // Custom Tech Navigation Bar
+          // Custom Tech Navigation Bar - Dinámica
           Positioned(
             left: 20,
             right: 20,
@@ -123,21 +125,21 @@ class _MainSkeletonState extends State<MainSkeleton> {
             child: Container(
               height: 70,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A).withOpacity(0.85), // Dark Tech Blue/Black
-                borderRadius: BorderRadius.circular(35), // Rounded curves
+                color: theme.colorScheme.surface.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(35),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withOpacity(isDark ? 0.3 : 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
                 ],
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(35),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Glass Effect
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -145,7 +147,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
                         _buildNavItem(0, Icons.person_outline, Icons.person, "Perfil")
                       else if (isAdmin) ...[
                         _buildNavItem(0, Icons.radar, Icons.radar_sharp, "Carreras"),
-                        _buildNavItem(1, Icons.qr_code_scanner, Icons.qr_code_scanner, "Gestión"),
+                        _buildNavItem(1, Icons.settings_suggest_outlined, Icons.settings_suggest, "Gestión"),
                         _buildNavItem(2, Icons.person_outline, Icons.person, "Perfil"),
                       ] else ...[
                         _buildNavItem(0, Icons.map_outlined, Icons.map, "Mapa"),
@@ -166,6 +168,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
   Widget _buildNavItem(int index, IconData iconOutlined, IconData iconFilled, String label) {
     final bool isSelected = _currentIndex == index;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -176,7 +179,7 @@ class _MainSkeletonState extends State<MainSkeleton> {
         padding: EdgeInsets.symmetric(horizontal: isSelected ? 20 : 10, vertical: 8),
         decoration: isSelected 
             ? BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.2),
+                color: theme.colorScheme.primary.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               )
             : null,
@@ -185,7 +188,9 @@ class _MainSkeletonState extends State<MainSkeleton> {
           children: [
             Icon(
               isSelected ? iconFilled : iconOutlined,
-              color: isSelected ? theme.colorScheme.primary : Colors.white70,
+              color: isSelected 
+                ? theme.colorScheme.primary 
+                : theme.colorScheme.onSurface.withOpacity(0.6),
             ),
             if (isSelected) ...[
               const SizedBox(width: 8),

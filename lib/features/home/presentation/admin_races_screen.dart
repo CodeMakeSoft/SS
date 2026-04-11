@@ -17,43 +17,35 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Fondo claro y limpio
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // CABECERA LIMPIA
+            // CABECERA ESTANDARIZADA
             Padding(
-              padding: const EdgeInsets.all(25.0),
+              padding: const EdgeInsets.fromLTRB(25, 35, 25, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "ADMINISTRACIÓN",
+                    "Radar Maestro",
                     style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "God Mode",
-                    style: TextStyle(
-                      color: Color(0xFF263238),
+                      color: theme.colorScheme.onSurface,
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                     ),
                   ),
                 ],
               ),
             ),
             
-            // LISTA DE CARRERAS (VISTA COMPLETA)
+            // LISTA DE CARRERAS
             Expanded(
               child: StreamBuilder<List<RaceModel>>(
                 stream: RaceService.instance.getActiveRaces(),
@@ -61,7 +53,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
                   final races = snapshot.data ?? [];
 
                   if (races.isEmpty) {
-                    return _buildEmptyState();
+                    return _buildEmptyState(theme);
                   }
 
                   return ListView.builder(
@@ -74,8 +66,8 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
                       
                       final race = races[index];
                       return races.length == 1 
-                        ? _buildRaceLargeCard(race)
-                        : _buildRaceListCard(race);
+                        ? _buildRaceLargeCard(race, theme, isDark)
+                        : _buildRaceListCard(race, theme, isDark);
                     },
                   );
                 },
@@ -87,56 +79,56 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.radar, size: 80, color: Colors.blueGrey.withOpacity(0.1)),
+          Icon(Icons.radar, size: 80, color: theme.colorScheme.onSurface.withOpacity(0.1)),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             "No hay carreras activas",
-            style: TextStyle(color: Colors.blueGrey, fontSize: 16),
+            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 16),
           ),
         ],
       ),
     );
   }
 
-  // Card clara para la lista
-  Widget _buildRaceListCard(RaceModel race) {
+  Widget _buildRaceListCard(RaceModel race, ThemeData theme, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           )
         ],
+        border: isDark ? Border.all(color: Colors.white10) : null,
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(15),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.blueAccent.withOpacity(0.1),
+            color: theme.colorScheme.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.directions_run, color: Colors.blueAccent),
+          child: Icon(Icons.directions_run, color: theme.colorScheme.primary),
         ),
         title: Text(
           race.name,
-          style: const TextStyle(color: Color(0xFF263238), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         subtitle: Text(
           "${race.participants.length} participantes • ${race.status.toUpperCase()}",
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
+          style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.black12, size: 16),
+        trailing: Icon(Icons.arrow_forward_ios, color: theme.colorScheme.onSurface.withOpacity(0.2), size: 16),
         onTap: () {
           Navigator.push(
             context,
@@ -147,8 +139,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
     );
   }
 
-  // Card grande claro
-  Widget _buildRaceLargeCard(RaceModel race) {
+  Widget _buildRaceLargeCard(RaceModel race, ThemeData theme, bool isDark) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -159,16 +150,21 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
       child: Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
-              color: Colors.blueAccent.withOpacity(0.1),
+              color: theme.colorScheme.primary.withOpacity(isDark ? 0.4 : 0.1),
               blurRadius: 30,
               offset: const Offset(0, 15),
             )
           ],
-          border: Border.all(color: Colors.blueAccent.withOpacity(0.05)),
+          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+          gradient: isDark ? LinearGradient(
+            colors: [theme.colorScheme.primary.withOpacity(0.1), Colors.transparent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ) : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,27 +172,27 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("CARRERA ACTIVA", 
-                  style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 10)),
-                const Icon(Icons.online_prediction, color: Colors.green, size: 18),
+                Text("CARRERA ACTIVA", 
+                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 10)),
+                Icon(Icons.online_prediction, color: isDark ? Colors.greenAccent : Colors.green, size: 18),
               ],
             ),
             const SizedBox(height: 15),
             Text(
               race.name,
-              style: const TextStyle(color: Color(0xFF263238), fontSize: 32, fontWeight: FontWeight.w900),
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 32, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
             Text(
               "Toca para abrir el panel de control completo y ver el mapa en tiempo real.",
-              style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.4),
+              style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 14, height: 1.4),
             ),
             const SizedBox(height: 30),
             Row(
               children: [
-                _buildStatItem(Icons.people, race.participants.length.toString(), "Corredores"),
+                _buildStatItem(Icons.people, race.participants.length.toString(), "Corredores", theme),
                 const SizedBox(width: 40),
-                _buildStatItem(Icons.timer, "00:00", "Tiempo"),
+                _buildStatItem(Icons.timer, "00:00", "Tiempo", theme),
               ],
             )
           ],
@@ -205,18 +201,18 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
     );
   }
 
-  Widget _buildStatItem(IconData icon, String value, String label) {
+  Widget _buildStatItem(IconData icon, String value, String label, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.blueAccent, size: 14),
+            Icon(icon, color: theme.colorScheme.primary, size: 14),
             const SizedBox(width: 8),
-            Text(value, style: const TextStyle(color: Color(0xFF263238), fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(value, style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+        Text(label, style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 11)),
       ],
     );
   }

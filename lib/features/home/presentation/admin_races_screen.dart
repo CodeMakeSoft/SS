@@ -19,7 +19,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Fondo oscuro para que resalten los cards
+      backgroundColor: const Color(0xFFF5F7FA), // Fondo claro y limpio
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -44,7 +44,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
                   const Text(
                     "Radar Maestro",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF263238),
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
                     ),
@@ -66,14 +66,13 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: races.length + 1, // +1 para compensar el bottom bar
+                    itemCount: races.length + 1,
                     itemBuilder: (context, index) {
                       if (index == races.length) {
-                        return const SizedBox(height: 120); // Margen para la barra de navegación
+                        return const SizedBox(height: 120);
                       }
                       
                       final race = races[index];
-                      // Si hay una sola, destaque en grande. Si hay varias, lista adaptable.
                       return races.length == 1 
                         ? _buildRaceLargeCard(race)
                         : _buildRaceListCard(race);
@@ -93,25 +92,31 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.radar, size: 80, color: Colors.white.withOpacity(0.1)),
+          Icon(Icons.radar, size: 80, color: Colors.blueGrey.withOpacity(0.1)),
           const SizedBox(height: 20),
           const Text(
             "No hay carreras activas",
-            style: TextStyle(color: Colors.white38, fontSize: 16),
+            style: TextStyle(color: Colors.blueGrey, fontSize: 16),
           ),
         ],
       ),
     );
   }
 
-  // Card para cuando hay múltiples carreras
+  // Card clara para la lista
   Widget _buildRaceListCard(RaceModel race) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(15),
@@ -125,13 +130,13 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
         ),
         title: Text(
           race.name,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: const TextStyle(color: Color(0xFF263238), fontWeight: FontWeight.bold, fontSize: 18),
         ),
         subtitle: Text(
           "${race.participants.length} participantes • ${race.status.toUpperCase()}",
-          style: const TextStyle(color: Colors.white54, fontSize: 13),
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 16),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.black12, size: 16),
         onTap: () {
           Navigator.push(
             context,
@@ -142,7 +147,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
     );
   }
 
-  // Card prominente para una sola carrera activa
+  // Card grande claro
   Widget _buildRaceLargeCard(RaceModel race) {
     return GestureDetector(
       onTap: () {
@@ -154,13 +159,16 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
       child: Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blueAccent.withOpacity(0.2), Colors.transparent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(35),
-          border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blueAccent.withOpacity(0.1),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            )
+          ],
+          border: Border.all(color: Colors.blueAccent.withOpacity(0.05)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,18 +178,18 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
               children: [
                 const Text("CARRERA ACTIVA", 
                   style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 10)),
-                const Icon(Icons.online_prediction, color: Colors.greenAccent, size: 18),
+                const Icon(Icons.online_prediction, color: Colors.green, size: 18),
               ],
             ),
             const SizedBox(height: 15),
             Text(
               race.name,
-              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+              style: const TextStyle(color: Color(0xFF263238), fontSize: 32, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
             Text(
-              "Toca para abrir el panel de control completo y ver el mapa en tiempo real sin obstrucciones.",
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.4),
+              "Toca para abrir el panel de control completo y ver el mapa en tiempo real.",
+              style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.4),
             ),
             const SizedBox(height: 30),
             Row(
@@ -203,12 +211,12 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.white38, size: 14),
+            Icon(icon, color: Colors.blueAccent, size: 14),
             const SizedBox(width: 8),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(value, style: const TextStyle(color: Color(0xFF263238), fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
       ],
     );
   }

@@ -18,7 +18,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // MAPA EN PANTALLA COMPLETA
@@ -33,7 +33,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             mapType: MapType.normal,
           ),
 
-          // CABECERA FLOTANTE CON BOTÓN DE REGRESO
+          // CABECERA FLOTANTE CLARA
           Positioned(
             top: 50,
             left: 20,
@@ -45,11 +45,11 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                    child: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 20),
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -57,9 +57,10 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A).withOpacity(0.9),
+                      color: Colors.white.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                      border: Border.all(color: Colors.black12),
                     ),
                     child: Row(
                       children: [
@@ -69,7 +70,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                           child: Text(
                             widget.race.name.toUpperCase(),
                             style: const TextStyle(
-                              color: Colors.white, 
+                              color: Color(0xFF0F172A), 
                               fontWeight: FontWeight.bold, 
                               letterSpacing: 1.1,
                               fontSize: 14
@@ -85,7 +86,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             ),
           ),
 
-          // PANEL DE CONTROL INFERIOR (Opcional, para herramientas rápidas)
+          // PANEL DE CONTROL INFERIOR CLARO
           Positioned(
             bottom: 40,
             left: 20,
@@ -95,7 +96,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(25),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20)],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -107,7 +108,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                       Text(widget.race.status.toUpperCase(), 
                         style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10)),
                       const Text("GESTIÓN EN VIVO", 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A))),
                     ],
                   ),
                   ElevatedButton.icon(
@@ -119,6 +120,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0F172A),
                       foregroundColor: Colors.white,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                   )

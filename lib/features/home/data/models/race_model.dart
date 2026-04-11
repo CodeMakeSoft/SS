@@ -13,6 +13,8 @@ class RaceModel {
   final DateTime? startTime;
   final DateTime? endTime;
 
+  final List<String> participants;
+
   RaceModel({
     required this.raceId,
     required this.name,
@@ -25,6 +27,7 @@ class RaceModel {
     this.estimatedDuration,
     this.startTime,
     this.endTime,
+    this.participants = const [],
   });
 
   factory RaceModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -40,6 +43,7 @@ class RaceModel {
       estimatedDuration: data['estimatedDuration'],
       startTime: (data['startTime'] as Timestamp?)?.toDate(),
       endTime: (data['endTime'] as Timestamp?)?.toDate(),
+      participants: List<String>.from(data['participants'] ?? []),
     );
   }
 
@@ -55,6 +59,7 @@ class RaceModel {
       'estimatedDuration': estimatedDuration,
       'startTime': startTime,
       'endTime': endTime,
+      'participants': participants,
     };
   }
 }

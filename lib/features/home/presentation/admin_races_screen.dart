@@ -1,28 +1,38 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../data/race_service.dart';
 import '../data/models/race_model.dart';
-import 'package:intl/intl.dart';
+import 'race_management_screen.dart';
 
-class AdminRacesScreen extends StatelessWidget {
+class AdminRacesScreen extends StatefulWidget {
   const AdminRacesScreen({super.key});
 
   @override
+  State<AdminRacesScreen> createState() => _AdminRacesScreenState();
+}
+
+class _AdminRacesScreenState extends State<AdminRacesScreen> {
+  
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFF0F172A), // Fondo oscuro para que resalten los cards
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // CABECERA LIMPIA
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              padding: const EdgeInsets.all(25.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text(
-                    "EVENTOS",
+                  Text(
+                    "ADMINISTRACIÓN",
                     style: TextStyle(
                       color: theme.colorScheme.primary,
                       fontSize: 12,
@@ -32,47 +42,41 @@ class AdminRacesScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Radar en Vivo",
+                    "Radar Maestro",
                     style: TextStyle(
-                      color: Color(0xFF263238),
-                      fontSize: 25,
+                      color: Colors.white,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
               ),
             ),
+            
+            // LISTA DE CARRERAS (VISTA COMPLETA)
             Expanded(
               child: StreamBuilder<List<RaceModel>>(
                 stream: RaceService.instance.getActiveRaces(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
                   final races = snapshot.data ?? [];
-                  
+
                   if (races.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.radar_outlined, size: 80, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Sin eventos activos o próximos",
-                            style: TextStyle(color: Colors.grey[500], fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _buildEmptyState();
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: races.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: races.length + 1, // +1 para compensar el bottom bar
                     itemBuilder: (context, index) {
-                      return _buildRaceCard(context, races[index]);
+                      if (index == races.length) {
+                        return const SizedBox(height: 120); // Margen para la barra de navegación
+                      }
+                      
+                      final race = races[index];
+                      // Si hay una sola, destaque en grande. Si hay varias, lista adaptable.
+                      return races.length == 1 
+                        ? _buildRaceLargeCard(race)
+                        : _buildRaceListCard(race);
                     },
                   );
                 },
@@ -84,93 +88,128 @@ class AdminRacesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRaceCard(BuildContext context, RaceModel race) {
-    final theme = Theme.of(context);
-    final bool isOngoing = race.status == 'ongoing';
-    final String statusText = isOngoing ? 'En Curso' : 'Programada';
-    final Color statusColor = isOngoing ? Colors.green : Colors.blue;
-    final String dateStr = DateFormat('dd MMM yyyy').format(race.date);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.radar, size: 80, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 20),
+          const Text(
+            "No hay carreras activas",
+            style: TextStyle(color: Colors.white38, fontSize: 16),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Navegar al mapa detallado de esta carrera
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
+    );
+  }
+
+  // Card para cuando hay múltiples carreras
+  Widget _buildRaceListCard(RaceModel race) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(15),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.directions_run, color: Colors.blueAccent),
+        ),
+        title: Text(
+          race.name,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        subtitle: Text(
+          "${race.participants.length} participantes • ${race.status.toUpperCase()}",
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => RaceManagementScreen(race: race)),
+          );
+        },
+      ),
+    );
+  }
+
+  // Card prominente para una sola carrera activa
+  Widget _buildRaceLargeCard(RaceModel race) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => RaceManagementScreen(race: race)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent.withOpacity(0.2), Colors.transparent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(35),
+          border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    isOngoing ? Icons.flash_on_rounded : Icons.calendar_today_rounded, 
-                    color: statusColor, 
-                    size: 24
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        race.name,
-                        style: const TextStyle(
-                          color: Color(0xFF263238),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "$statusText • $dateStr",
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isOngoing ? "VER RADAR" : "GESTIONAR",
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                const Text("CARRERA ACTIVA", 
+                  style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 10)),
+                const Icon(Icons.online_prediction, color: Colors.greenAccent, size: 18),
               ],
             ),
-          ),
+            const SizedBox(height: 15),
+            Text(
+              race.name,
+              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Toca para abrir el panel de control completo y ver el mapa en tiempo real sin obstrucciones.",
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 30),
+            Row(
+              children: [
+                _buildStatItem(Icons.people, race.participants.length.toString(), "Corredores"),
+                const SizedBox(width: 40),
+                _buildStatItem(Icons.timer, "00:00", "Tiempo"),
+              ],
+            )
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: Colors.white38, size: 14),
+            const SizedBox(width: 8),
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+      ],
     );
   }
 }

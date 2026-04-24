@@ -40,7 +40,6 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
     }
   }
 
-
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -74,9 +73,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
         initialDuration = Duration(hours: hours, minutes: minutes);
       }
     }
-
     Duration tempDuration = initialDuration;
-
     await showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -131,7 +128,6 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
 
   Future<void> _createRace() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
     try {
       final user = FirebaseAuthService().currentUser;
@@ -176,7 +172,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
     
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Configurar Evento', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
@@ -231,10 +227,15 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildClickableField(
-                          label: "Duración Estimada",
+                          label: "Duración",
                           value: _durationController.text.isEmpty ? "Opcional" : _durationController.text,
                           icon: Icons.timer_outlined,
                           onTap: () => _selectDuration(context),
+                          onClear: () {
+                            setState(() {
+                              _durationController.clear();
+                            });
+                          },
                         ),
                       ),
                     ],
@@ -282,38 +283,35 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                      border: Border.all(color: theme.dividerColor),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.map_outlined, size: 40, color: Colors.grey[400]),
+                        Icon(Icons.map_outlined, size: 40, color: theme.colorScheme.onSurface.withOpacity(0.3)),
                         const SizedBox(height: 12),
-                        const Text(
-                          "Diseñador de Mapas",
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Próximamente: Dibuja la ruta en tiempo real.",
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        Text(
+                          "Diseñar ruta",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            color: theme.colorScheme.onSurface.withOpacity(0.7)
+                          ),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
-                          onPressed: () {}, // Futuro editor
+                          onPressed: () {}, 
                           icon: const Icon(Icons.edit_location_alt_outlined),
                           label: const Text("Definir Ruta"),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF0D47A1),
-                            side: const BorderSide(color: Color(0xFF0D47A1)),
+                            foregroundColor: theme.colorScheme.primary,
+                            side: BorderSide(color: theme.colorScheme.primary),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 100), // Espacio para el botón flotante
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -363,7 +361,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
     );
   }
 
-  Widget _buildTextField({
+ Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -372,12 +370,14 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
     String? Function(String?)? validator,
     void Function(String)? onFieldSubmitted,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.02), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: TextFormField(
@@ -385,16 +385,19 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
         maxLines: maxLines,
         validator: validator,
         onFieldSubmitted: onFieldSubmitted,
+        style: TextStyle(color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          prefixIcon: Icon(icon, color: const Color(0xFF0D47A1), size: 20),
+          labelStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+          hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4)),
+          prefixIcon: Icon(icon, color: theme.colorScheme.primary, size: 20),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: theme.cardColor,
         ),
       ),
     );
@@ -405,29 +408,43 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
     required String value,
     required IconData icon,
     required VoidCallback onTap,
+    VoidCallback? onClear,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.02), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF0D47A1), size: 20),
+            Icon(icon, color: theme.colorScheme.primary, size: 20),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                  Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                ],
+              ),
             ),
+            if (onClear != null && value != "Opcional")
+              GestureDetector(
+                onTap: onClear,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.close, color: Colors.red, size: 14),
+                ),
+              ),
           ],
         ),
       ),

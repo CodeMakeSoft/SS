@@ -211,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
           title: const Text(
-            'ID de Usuario',
+            'Mi Perfil',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           centerTitle: true,

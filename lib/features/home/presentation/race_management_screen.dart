@@ -188,51 +188,167 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final scannedUid = await showDialog(
-                        context: context,
-                        builder: (context) => const QrScannerScreen(),
-                      );
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: theme.scaffoldBackgroundColor,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                            ),
+                            builder: (context) {
+                              return SafeArea(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.3),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      
+                                      Text(
+                                        "Control de Carrera",
+                                        style: TextStyle(
+                                          fontSize: 18, 
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 15),
 
-                      if (scannedUid != null && scannedUid is String) {
-                        showDialog(
-                          context: context, barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
-                        );
+                                      // Opciones del Menú
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+                                          child: const Icon(Icons.play_arrow, color: Colors.green),
+                                        ),
+                                        title: const Text("Iniciar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        onTap: () {
+                                          Navigator.pop(context); // Cierra el menú
+                                          // TODO: Lógica para iniciar en Firestore
+                                        },
+                                      ),
+                                      
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+                                          child: const Icon(Icons.pause, color: Colors.orange),
+                                        ),
+                                        title: const Text("Pausar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          // TODO: Lógica para pausar
+                                        },
+                                      ),
+                                      
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                                          child: const Icon(Icons.stop, color: Colors.red),
+                                        ),
+                                        title: const Text("Terminar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          // TODO: Lógica para terminar
+                                        },
+                                      ),
 
-                        try {
-                          final doc = await FirebaseFirestore.instance.collection('users').doc(scannedUid).get();
-                          
-                          if (context.mounted) Navigator.pop(context); 
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 20),
+                                        child: Divider(), // Línea separadora
+                                      ),
 
-                          if (!doc.exists) {
-                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario no encontrado'), backgroundColor: Colors.redAccent));
-                            return;
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
+                                          child: const Icon(Icons.campaign, color: Colors.blueAccent),
+                                        ),
+                                        title: const Text("Crear Aviso", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        subtitle: const Text("Enviar notificación push a todos"),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          // TODO: Abrir otro dialog para escribir el aviso
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.all(14),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Icon(Icons.route),
+                      ),
+                      
+                      const SizedBox(width: 10),
+                      
+                      ElevatedButton(
+                        onPressed: () async {
+                          final scannedUid = await showDialog(
+                            context: context,
+                            builder: (context) => const QrScannerScreen(),
+                          );
+                          if (scannedUid != null && scannedUid is String) {
+                            showDialog(
+                              context: context, barrierDismissible: false,
+                              builder: (_) => const Center(child: CircularProgressIndicator()),
+                            );
+                            try {
+                              final doc = await FirebaseFirestore.instance.collection('users').doc(scannedUid).get();
+                              
+                              if (context.mounted) Navigator.pop(context); 
+                              if (!doc.exists) {
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario no encontrado'), backgroundColor: Colors.redAccent));
+                                return;
+                              }
+                              final userData = doc.data() as Map<String, dynamic>;
+                              final runnerName = userData['displayName'] ?? 'Sin nombre';
+                              if (context.mounted) {
+                                _showBibAssignmentModal(scannedUid, runnerName);
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.pop(context); 
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error de conexión')));
+                              }
+                            }
                           }
-
-                          final userData = doc.data() as Map<String, dynamic>;
-                          final runnerName = userData['displayName'] ?? 'Sin nombre';
-
-                          if (context.mounted) {
-                            _showBibAssignmentModal(scannedUid, runnerName);
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            Navigator.pop(context); 
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error de conexión')));
-                          }
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text("VINCULAR"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.all(14),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                        child: const Icon(Icons.qr_code_scanner),
+                      ),
+                    ],
                   ),
                 ],
               ),

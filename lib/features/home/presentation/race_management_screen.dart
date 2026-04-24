@@ -91,6 +91,92 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
     );
   }
 
+  void _showActionConfirmation(BuildContext context, {
+    required String title,
+    required String description,
+    required String confirmText,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onConfirm,
+  }) {
+    final theme = Theme.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: theme.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Círculo con ícono gigante en el centro
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 36),
+              ),
+              const SizedBox(height: 20),
+              
+              // Título
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+              ),
+              const SizedBox(height: 10),
+              
+              // Descripción / Advertencia
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              
+              // Botones Cancelar / Confirmar
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        side: BorderSide(color: theme.dividerColor),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancelar', style: TextStyle(color: theme.colorScheme.onSurface)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context); // Cierra el modal
+                        onConfirm(); // Ejecuta la función que le pasemos
+                      },
+                      child: Text(confirmText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -226,7 +312,6 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                       ),
                                       const SizedBox(height: 15),
 
-                                      // Opciones del Menú
                                       ListTile(
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
@@ -235,9 +320,19 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         ),
                                         title: const Text("Iniciar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
                                         onTap: () {
-                                          Navigator.pop(context); // Cierra el menú
-                                          // TODO: Lógica para iniciar en Firestore
-                                        },
+                                          Navigator.pop(context);
+                                          _showActionConfirmation(
+                                            context,
+                                            title: '¿Iniciar Carrera?',
+                                            description: 'Esta acción comenzará el cronómetro oficial y cambiará el estado de la carrera a "En Curso".',
+                                            confirmText: 'Iniciar',
+                                            color: Colors.green,
+                                            icon: Icons.play_arrow,
+                                            onConfirm: () {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Iniciada')));
+                                            },
+                                          );
+                                        }
                                       ),
                                       
                                       ListTile(
@@ -248,11 +343,21 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         ),
                                         title: const Text("Pausar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
                                         onTap: () {
-                                          Navigator.pop(context);
-                                          // TODO: Lógica para pausar
-                                        },
+                                          Navigator.pop(context); 
+                                          
+                                          _showActionConfirmation(
+                                            context,
+                                            title: '¿Pausar Carrera?',
+                                            description: 'Se detendrá el cronómetro temporalmente. Podrás reanudarlo después.',
+                                            confirmText: 'Pausar',
+                                            color: Colors.orange,
+                                            icon: Icons.pause,
+                                            onConfirm: () {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Pausada')));
+                                            },
+                                          );
+                                        }
                                       ),
-                                      
                                       ListTile(
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
@@ -261,14 +366,24 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         ),
                                         title: const Text("Terminar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
                                         onTap: () {
-                                          Navigator.pop(context);
-                                          // TODO: Lógica para terminar
+                                          Navigator.pop(context); 
+                                          
+                                          _showActionConfirmation(
+                                            context,
+                                            title: '¿Terminar Carrera?',
+                                            description: '¡Atención! Esta acción es irreversible. Finalizará la recolección de tiempos.',
+                                            confirmText: 'Finalizar',
+                                            color: Colors.red,
+                                            icon: Icons.stop,
+                                            onConfirm: () {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Finalizada')));
+                                            },
+                                          );
                                         },
                                       ),
-
                                       const Padding(
                                         padding: EdgeInsets.symmetric(horizontal: 20),
-                                        child: Divider(), // Línea separadora
+                                        child: Divider(), 
                                       ),
 
                                       ListTile(

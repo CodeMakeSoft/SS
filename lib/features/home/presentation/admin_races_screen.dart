@@ -33,7 +33,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Radar Maestro",
+                    "Carreras Activas",
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontSize: 28,
@@ -45,7 +45,6 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
               ),
             ),
             
-            // LISTA DE CARRERAS
             Expanded(
               child: StreamBuilder<List<RaceModel>>(
                 stream: RaceService.instance.getActiveRaces(),

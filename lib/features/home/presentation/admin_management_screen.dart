@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_race_screen.dart';
+import 'race_history_screen.dart';
 
 class AdminManagementScreen extends StatelessWidget {
   const AdminManagementScreen({super.key});
@@ -58,6 +59,29 @@ class AdminManagementScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const CreateRaceScreen()),
+                      );
+                    },
+                  ),
+                ]),
+              ),
+            ),
+             SliverToBoxAdapter(child: SizedBox(height: 15)),
+             SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildActionCard(
+                    context,
+                    theme: theme,
+                    isDark: isDark,
+                    title: "Historial de Carreras",
+                    subtitle: "Rutas de ediciones pasadas.",
+                    icon: Icons.history,
+                    color: const Color(0xFF0D47A1),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RaceHistoryScreen()),
                       );
                     },
                   ),

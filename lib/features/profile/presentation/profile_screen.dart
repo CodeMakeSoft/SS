@@ -182,7 +182,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool hasGoogle = linkedProviders.contains('google.com');
     bool hasFacebook = linkedProviders.contains('facebook.com');
 
-    // Fallback: If Firebase root user lacks photo but a linked provider has it
     if (displayPhoto == null || displayPhoto.isEmpty) {
       for (var provider in authUser.providerData) {
         if (provider.photoURL != null && provider.photoURL!.isNotEmpty) {
@@ -192,7 +191,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    // Fallback: If Firebase root lacks Name but a linked provider has it
     if (displayName == null || displayName.isEmpty) {
       for (var provider in authUser.providerData) {
         if (provider.displayName != null && provider.displayName!.isNotEmpty) {
@@ -202,7 +200,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    // Usamos el nombre de Firestore (appUser) por encima del de Auth para consistencia con el Admin
     final finalDisplayName = appUser?.displayName ?? displayName ?? 'Usuario';
 
     return IgnorePointer(
@@ -434,7 +431,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 30),
 
-              // SECURITY SECTION
               const _SectionHeader(title: 'Seguridad y Vinculación'),
               const SizedBox(height: 10),
 
@@ -489,7 +485,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 30),
 
-              // SETTINGS SECTION
               const _SectionHeader(title: 'Sistema'),
               const SizedBox(height: 10),
               Container(

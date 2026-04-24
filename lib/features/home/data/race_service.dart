@@ -22,6 +22,16 @@ class RaceService {
             .toList());
   }
 
+  Stream<List<RaceModel>> getRaceHistory() {
+    return _firestore
+        .collection('races')
+        .where('status', isEqualTo: 'finished') 
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => RaceModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
   Future<void> updateRaceStatus(String raceId, String newStatus) async {
     await _firestore.collection('races').doc(raceId).update({
       'status': newStatus,

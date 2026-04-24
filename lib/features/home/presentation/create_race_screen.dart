@@ -4,6 +4,8 @@ import '../data/models/race_model.dart';
 import '../../auth/data/firebase_auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'route_designer_screen.dart';
 
 class CreateRaceScreen extends StatefulWidget {
   const CreateRaceScreen({super.key});
@@ -22,6 +24,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
   DateTime _selectedDate = DateTime.now();
   List<String> _tags = [];
   bool _isLoading = false;
+  List<LatLng> _routePoints = [];
 
   void _addTag() {
     if (_tags.length >= 10) {
@@ -128,6 +131,12 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
 
   Future<void> _createRace() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_routePoints.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debes definir la ruta en el mapa'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final user = FirebaseAuthService().currentUser;
@@ -283,26 +292,42 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: theme.cardColor,
+                      color: _routePoints.isEmpty ? theme.cardColor : theme.colorScheme.primary.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: theme.dividerColor),
+                      border: Border.all(color: _routePoints.isEmpty ? theme.dividerColor : theme.colorScheme.primary),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.map_outlined, size: 40, color: theme.colorScheme.onSurface.withOpacity(0.3)),
+                        Icon(
+                          _routePoints.isEmpty ? Icons.map_outlined : Icons.check_circle_outline, 
+                          size: 40, 
+                          color: _routePoints.isEmpty ? theme.colorScheme.onSurface.withOpacity(0.3) : theme.colorScheme.primary
+                        ),
                         const SizedBox(height: 12),
                         Text(
-                          "Diseñar ruta",
+                          _routePoints.isEmpty ? "Diseñar ruta" : "Ruta Lista (${_routePoints.length} puntos)",
                           style: TextStyle(
                             fontWeight: FontWeight.bold, 
-                            color: theme.colorScheme.onSurface.withOpacity(0.7)
+                            color: _routePoints.isEmpty ? theme.colorScheme.onSurface.withOpacity(0.7) : theme.colorScheme.primary
                           ),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
-                          onPressed: () {}, 
-                          icon: const Icon(Icons.edit_location_alt_outlined),
-                          label: const Text("Definir Ruta"),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RouteDesignerScreen(initialRoute: _routePoints),
+                              ),
+                            );
+                            if (result != null && result is List<LatLng>) {
+                              setState(() {
+                                _routePoints = result;
+                              });
+                            }
+                          }, 
+                          icon: Icon(_routePoints.isEmpty ? Icons.edit_location_alt_outlined : Icons.edit),
+                          label: Text(_routePoints.isEmpty ? "Definir Ruta" : "Editar Ruta"),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: theme.colorScheme.primary,
                             side: BorderSide(color: theme.colorScheme.primary),

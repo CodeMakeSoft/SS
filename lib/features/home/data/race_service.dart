@@ -30,7 +30,7 @@ class RaceService {
     });
   }
 
-  Future<void> linkUserToRace(String raceId, String userId) async {
+  Future<void> linkUserToRace(String raceId, String userId, String bibNumber) async {
     final batch = _firestore.batch();
     
     batch.update(_firestore.collection('races').doc(raceId), {
@@ -39,6 +39,7 @@ class RaceService {
     
     batch.update(_firestore.collection('users').doc(userId), {
       'activeRaceId': raceId,
+      'activeBibNumber': bibNumber,
     });
     await batch.commit();
   }
@@ -52,6 +53,7 @@ class RaceService {
     
     batch.update(_firestore.collection('users').doc(userId), {
       'activeRaceId': null,
+      'activeBibNumber': null,
     });
     await batch.commit();
   }

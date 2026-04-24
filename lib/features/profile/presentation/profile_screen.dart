@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../home/providers/user_provider.dart';
 import '../../home/providers/theme_provider.dart';
+import '../../auth/domain/user_roles.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -216,75 +217,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.qr_code_scanner),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-                    return AlertDialog(
-                      backgroundColor: theme.colorScheme.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: isDark ? const BorderSide(color: Colors.white10) : BorderSide.none,
-                      ),
-                      title: Center(
-                        child: Text(
-                          'Tu Código',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
+            if (appUser?.role == UserRoles.user || appUser?.role == UserRoles.trial)
+              IconButton(
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return AlertDialog(
+                        backgroundColor: theme.colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: isDark ? const BorderSide(color: Colors.white10) : BorderSide.none,
+                        ),
+                        title: Center(
+                          child: Text(
+                            'Tu Código',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
                         ),
-                      ),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Muestra este código al Staff para ser vinculado a una carrera.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
-                          ),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: QrImageView(
-                              data: authUser.uid,
-                              version: QrVersions.auto,
-                              size: 200.0,
-                              eyeStyle: QrEyeStyle(
-                                eyeShape: QrEyeShape.square,
-                                color: isDark ? Colors.blueAccent : const Color(0xFF0D47A1),
-                              ),
-                              dataModuleStyle: QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.circle,
-                                color: isDark ? Colors.white : const Color(0xFF0D47A1),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Muestra este código al Staff para ser vinculado a una carrera.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: 200,
+                              height: 200,
+                              child: QrImageView(
+                                data: authUser.uid,
+                                version: QrVersions.auto,
+                                size: 200.0,
+                                eyeStyle: QrEyeStyle(
+                                  eyeShape: QrEyeShape.square,
+                                  color: isDark ? Colors.blueAccent : const Color(0xFF0D47A1),
+                                ),
+                                dataModuleStyle: QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.circle,
+                                  color: isDark ? Colors.white : const Color(0xFF0D47A1),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            authUser.uid,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            const SizedBox(height: 10),
+                            Text(
+                              authUser.uid,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                              ),
                             ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cerrar'),
                           ),
                         ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cerrar'),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
+                      );
+                    },
+                  );
+                },
+              ),
             if (_isLoading) const CircularProgressIndicator(),
           ],
         ),

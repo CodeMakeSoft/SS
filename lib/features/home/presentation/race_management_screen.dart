@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../data/models/race_model.dart';
 import '../data/race_service.dart';
+import 'qr_scanner_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RaceManagementScreen extends StatefulWidget {
   final RaceModel race;
@@ -14,6 +16,80 @@ class RaceManagementScreen extends StatefulWidget {
 
 class _RaceManagementScreenState extends State<RaceManagementScreen> {
   final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
+
+   void _showBibAssignmentModal(String scannedUid, String runnerName) {
+    final TextEditingController bibController = TextEditingController();
+    final theme = Theme.of(context);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: theme.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.all(24),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                Text("ASIGNAR DORSAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                const SizedBox(height: 20),
+                
+                // Perfil Cargado
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+                  child: Row(
+                    children: [
+                      CircleAvatar(backgroundColor: theme.colorScheme.primary, child: Text(runnerName.isNotEmpty ? runnerName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                      const SizedBox(width: 15),
+                      Expanded(child: Text(runnerName, style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface))),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                TextField(
+                  controller: bibController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true, 
+                  decoration: InputDecoration(
+                    labelText: 'Dorsal',
+                    prefixIcon: const Icon(Icons.confirmation_number_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent, 
+                      padding: const EdgeInsets.symmetric(vertical: 15), 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                    ),
+                    onPressed: () async {
+                      if (bibController.text.trim().isEmpty) return;
+                      
+                      await RaceService.instance.linkUserToRace(widget.race.raceId, scannedUid, bibController.text.trim());
+                      
+                      if (context.mounted) {
+                        Navigator.pop(context); 
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$runnerName vinculado (Dorsal #${bibController.text.trim()})'), backgroundColor: Colors.green));
+                      }
+                    },
+                    child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +191,41 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     ],
                   ),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      // Lógica de escaneo QR aquí
+                    onPressed: () async {
+                      final scannedUid = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const QrScannerScreen()),
+                      );
+
+                      if (scannedUid != null && scannedUid is String) {
+                        showDialog(
+                          context: context, barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+
+                        try {
+                          final doc = await FirebaseFirestore.instance.collection('users').doc(scannedUid).get();
+                          
+                          if (context.mounted) Navigator.pop(context); 
+
+                          if (!doc.exists) {
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario no encontrado'), backgroundColor: Colors.redAccent));
+                            return;
+                          }
+
+                          final userData = doc.data() as Map<String, dynamic>;
+                          final runnerName = userData['displayName'] ?? 'Sin nombre';
+
+                          if (context.mounted) {
+                            _showBibAssignmentModal(scannedUid, runnerName);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            Navigator.pop(context); 
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error de conexión')));
+                          }
+                        }
+                      }
                     },
                     icon: const Icon(Icons.qr_code_scanner),
                     label: const Text("VINCULAR"),
@@ -126,7 +235,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),

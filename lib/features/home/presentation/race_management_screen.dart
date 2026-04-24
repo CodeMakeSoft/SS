@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../data/models/race_model.dart';
 import '../data/race_service.dart';
+import 'runners_list_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -289,6 +290,12 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           subtitle: const Text("Ver y administrar participantes"),
                                           onTap: () {
                                             Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => RunnersListScreen(race: widget.race),
+                                              ),
+                                            );
                                           },
                                         ),
                                         const Padding(

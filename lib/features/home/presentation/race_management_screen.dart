@@ -219,7 +219,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
@@ -239,9 +239,93 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                               letterSpacing: 1.1,
                               fontSize: 14
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: theme.scaffoldBackgroundColor,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                              ),
+                              builder: (context) {
+                                return SafeArea(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+
+                                        Container(
+                                          width: 40,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        
+                                        Text(
+                                          "Gestión de la carrera",
+                                          style: TextStyle(
+                                            fontSize: 18, 
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 15),
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
+                                            child: const Icon(Icons.people_alt, color: Colors.blueAccent),
+                                          ),
+                                          title: const Text("Lista de Corredores", style: TextStyle(fontWeight: FontWeight.bold)),
+                                          subtitle: const Text("Ver y administrar participantes"),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 20),
+                                          child: Divider(),
+                                        ),
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(color: Colors.deepPurple.withOpacity(0.1), shape: BoxShape.circle),
+                                            child: const Icon(Icons.settings, color: Colors.deepPurple),
+                                          ),
+                                          title: const Text("Opciones de Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                          subtitle: const Text("Editar detalles"),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          child: SizedBox(
+                            width: 34,
+                            height: 34,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        )
                       ],
                     ),
                   ),

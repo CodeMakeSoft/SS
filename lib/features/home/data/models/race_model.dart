@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class RaceModel {
   final String raceId;
   final String name;
-  final String status; // 'upcoming', 'ongoing', 'finished'
+  final String status; //upcoming, ongoing, finished
   final DateTime date;
   final String? description;
   final String creatorUid;
@@ -12,8 +12,9 @@ class RaceModel {
   final String? estimatedDuration;
   final DateTime? startTime;
   final DateTime? endTime;
-
   final List<String> participants;
+  
+  final List<GeoPoint> route;
 
   RaceModel({
     required this.raceId,
@@ -28,6 +29,7 @@ class RaceModel {
     this.startTime,
     this.endTime,
     this.participants = const [],
+    this.route = const [], 
   });
 
   factory RaceModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -44,6 +46,7 @@ class RaceModel {
       startTime: (data['startTime'] as Timestamp?)?.toDate(),
       endTime: (data['endTime'] as Timestamp?)?.toDate(),
       participants: List<String>.from(data['participants'] ?? []),
+      route: List<GeoPoint>.from(data['route'] ?? []), 
     );
   }
 
@@ -60,6 +63,7 @@ class RaceModel {
       'startTime': startTime,
       'endTime': endTime,
       'participants': participants,
+      'route': route, 
     };
   }
 }

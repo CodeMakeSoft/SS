@@ -5,6 +5,7 @@ import '../../auth/data/firebase_auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'route_designer_screen.dart';
 
 class CreateRaceScreen extends StatefulWidget {
@@ -142,7 +143,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
       final user = FirebaseAuthService().currentUser;
       if (user == null) throw Exception("No hay usuario autenticado");
 
-      final newRace = RaceModel(
+            final newRace = RaceModel(
         raceId: "race_${DateTime.now().millisecondsSinceEpoch}",
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -151,6 +152,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
         creatorUid: user.uid,
         tags: _tags,
         estimatedDuration: _durationController.text.trim(),
+        route: _routePoints.map((p) => GeoPoint(p.latitude, p.longitude)).toList(),
       );
 
       await RaceService.instance.createRace(newRace);

@@ -6,6 +6,7 @@ import '../data/race_service.dart';
 import 'runners_list_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 
 class RaceManagementScreen extends StatefulWidget {
   final RaceModel race;
@@ -17,6 +18,28 @@ class RaceManagementScreen extends StatefulWidget {
 
 class _RaceManagementScreenState extends State<RaceManagementScreen> {
   final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
+
+  Future<void> _getUserLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    
+    if (permission == LocationPermission.deniedForever) return;
+
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    final myLocation = LatLng(position.latitude, position.longitude);
+    
+    final GoogleMapController controller = await _mapController.future;
+    controller.animateCamera(CameraUpdate.newLatLngZoom(myLocation, 15));
+  }
 
    void _showBibAssignmentModal(String scannedUid, String runnerName) {
     final TextEditingController bibController = TextEditingController();
@@ -189,14 +212,45 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: LatLng(19.4326, -99.1332),
-              zoom: 14,
+            initialCameraPosition: CameraPosition(
+              target: widget.race.route.isNotEmpty 
+                  ? LatLng(widget.race.route.first.latitude, widget.race.route.first.longitude)
+                  : const LatLng(19.4326, -99.1332),
+              zoom: 15,
             ),
             onMapCreated: (controller) => _mapController.complete(controller),
             myLocationEnabled: true,
+            myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapType: MapType.normal,
+            
+            polylines: {
+              if (widget.race.route.isNotEmpty)
+                Polyline(
+                  polylineId: const PolylineId('race_route'),
+                  points: widget.race.route.map((p) => LatLng(p.latitude, p.longitude)).toList(),
+                  color: Colors.blueAccent,
+                  width: 5,
+                  jointType: JointType.round,
+                ),
+            },
+            
+            markers: {
+              if (widget.race.route.isNotEmpty)
+                Marker(
+                  markerId: const MarkerId('start'),
+                  position: LatLng(widget.race.route.first.latitude, widget.race.route.first.longitude),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+                  infoWindow: const InfoWindow(title: 'Punto de Partida'),
+                ),
+              if (widget.race.route.length > 1)
+                Marker(
+                  markerId: const MarkerId('end'),
+                  position: LatLng(widget.race.route.last.latitude, widget.race.route.last.longitude),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                  infoWindow: const InfoWindow(title: 'Meta'),
+                ),
+            },
           ),
 
           Positioned(
@@ -338,6 +392,17 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+
+          Positioned(
+            right: 20,
+            bottom: 140, 
+            child: FloatingActionButton(
+              mini: true,
+              backgroundColor: theme.cardColor,
+              onPressed: _getUserLocation,
+              child: Icon(Icons.my_location, color: theme.colorScheme.primary),
             ),
           ),
 

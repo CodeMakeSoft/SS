@@ -97,10 +97,10 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // MAPA EN PANTALLA COMPLETA
           GoogleMap(
             initialCameraPosition: const CameraPosition(
               target: LatLng(19.4326, -99.1332),
@@ -112,7 +112,6 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             mapType: MapType.normal,
           ),
 
-          // CABECERA FLOTANTE ADAPTABLE
           Positioned(
             top: 50,
             left: 20,
@@ -165,7 +164,6 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             ),
           ),
 
-          // PANEL DE CONTROL INFERIOR ADAPTABLE
           Positioned(
             bottom: 40,
             left: 20,
@@ -192,9 +190,9 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   ),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final scannedUid = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const QrScannerScreen()),
+                      final scannedUid = await showDialog(
+                        context: context,
+                        builder: (context) => const QrScannerScreen(),
                       );
 
                       if (scannedUid != null && scannedUid is String) {

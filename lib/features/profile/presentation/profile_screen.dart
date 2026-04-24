@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../auth/data/firebase_auth_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:provider/provider.dart';
@@ -244,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Muestra este código al Staff para ser vinculado a una carrera.',
+                              'Muestra este código para ser vinculado a una carrera.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                             ),
@@ -267,11 +268,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Text(
-                              authUser.uid,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            GestureDetector(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: authUser.uid));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('ID copiado al portapapeles'),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    authUser.uid,
+                                    style: TextStyle(
+                                    fontSize: 10,
+                                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Icon(
+                                    Icons.copy_rounded, 
+                                    size: 12, 
+                                    color: theme.colorScheme.onSurface.withOpacity(0.4)
+                                  ),
+                                ],
                               ),
                             ),
                           ],

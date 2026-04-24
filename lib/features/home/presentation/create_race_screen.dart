@@ -79,7 +79,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Evento Premium creado con éxito 🚀'),
+            content: Text('Evento creado con éxito'),
             backgroundColor: Colors.green,
           ),
         );

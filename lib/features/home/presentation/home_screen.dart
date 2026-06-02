@@ -11,6 +11,7 @@ import 'package:widget_to_marker/widget_to_marker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/race_model.dart';
+import '../data/race_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _activeRaceName = "CARRERA OFICIAL";
   String _activeRaceStatus = "upcoming";
   String? _currentRaceId;
+  StreamSubscription<DocumentSnapshot>? _raceDataSubscription;
   StreamSubscription<QuerySnapshot>? _liveLocationsSubscription;
   final Map<String, BitmapDescriptor> _otherUsersMarkersIcons = {};
   
@@ -67,17 +69,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _fetchActiveRaceData(String raceId) async {
-    final doc = await FirebaseFirestore.instance.collection('races').doc(raceId).get();
-    if (doc.exists && mounted) {
-      final race = RaceModel.fromMap(doc.data()!, doc.id);
-      setState(() {
-        _activeRaceName = race.name;
-        _activeRaceStatus = race.status;
-      });
-      _drawRaceRoute(race);
-      _startLiveLocationsStream(raceId);
-    }
+  void _fetchActiveRaceData(String raceId) {
+    _raceDataSubscription?.cancel();
+    _raceDataSubscription = FirebaseFirestore.instance.collection('races').doc(raceId).snapshots().listen((doc) {
+      if (doc.exists && mounted) {
+        final race = RaceModel.fromMap(doc.data()!, doc.id);
+        setState(() {
+          _activeRaceName = race.name;
+          _activeRaceStatus = race.status;
+          
+          _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');
+          _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || m.markerId.value == 'end_checkpoint');
+        });
+        _drawRaceRoute(race);
+      }
+    });
+    _startLiveLocationsStream(raceId);
   }
 
   void _startLiveLocationsStream(String raceId) {
@@ -258,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _stopTracking();
+    _raceDataSubscription?.cancel();
     _liveLocationsSubscription?.cancel();
     super.dispose();
   }
@@ -370,11 +378,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const Spacer(),
-                  Icon(
-                    Icons.wifi,
-                    color: Colors.white.withOpacity(0.5),
-                    size: 18,
-                  ),
+                  if (hasActiveRace)
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 24),
+                      onPressed: () => _showLeaveRaceDialog(user!.activeRaceId!),
+                    )
+                  else
+                    Icon(
+                      Icons.wifi,
+                      color: Colors.white.withOpacity(0.5),
+                      size: 18,
+                    ),
                 ],
               ),
             ),
@@ -489,6 +505,38 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             child: Text(_isTracking ? "Sí, Detener" : "Sí, Iniciar", style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLeaveRaceDialog(String raceId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Abandonar Carrera", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        content: const Text("¿Estás seguro de que deseas salir de esta carrera? Ya no serás visible en el mapa ni se medirán tus tiempos.", style: TextStyle(fontSize: 15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final userId = FirebaseAuth.instance.currentUser?.uid;
+              if (userId != null) {
+                 await RaceService.instance.unlinkUserFromRace(raceId, userId);
+              }
+            },
+            child: const Text("Sí, Salir", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

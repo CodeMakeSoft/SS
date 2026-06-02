@@ -110,6 +110,42 @@ class _HomeScreenState extends State<HomeScreen> {
           _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || m.markerId.value == 'end_checkpoint');
         });
         _drawRaceRoute(race);
+        
+        // --- RACE FINISHED EVENT ---
+        if (race.status == 'finished') {
+           _stopTracking();
+           
+           if (!_isFinished && !_isDisqualified) {
+               _isDisqualified = true;
+               final myUid = FirebaseAuth.instance.currentUser?.uid;
+               if (myUid != null) {
+                  final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
+                  final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
+                  RaceService.instance.submitRaceResult(doc.id, myUid, myName, myPhoto, 0, true);
+                  LocalDatabase.instance.saveRaceHistory(doc.id, race.name, 0, true);
+               }
+               
+               if (mounted) {
+                 showDialog(
+                   context: context,
+                   builder: (ctx) => AlertDialog(
+                     title: const Text("Carrera Terminada"),
+                     content: const Text("El organizador ha finalizado la carrera de manera global. Tus estadísticas han sido guardadas como DNF (No terminó)."),
+                     actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Entendido"))]
+                   )
+                 );
+               }
+           }
+           
+           // Clear active race to return to free training mode
+           final myUid = FirebaseAuth.instance.currentUser?.uid;
+           if (myUid != null) {
+              FirebaseFirestore.instance.collection('users').doc(myUid).update({
+                'activeRaceId': FieldValue.delete(),
+                'activeBibNumber': FieldValue.delete(),
+              });
+           }
+        }
       }
     });
     _startLiveLocationsStream(raceId);
@@ -499,14 +535,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const Spacer(),
-                  if (hasActiveRace)
+                  if (hasActiveRace && !_isFinished && _activeRaceStatus != 'finished')
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 24),
                       onPressed: () => _showLeaveRaceDialog(user!.activeRaceId!),
                     )
-                  else
+                  else if (!hasActiveRace)
                     Icon(
                       Icons.wifi,
                       color: Colors.white.withOpacity(0.5),

@@ -19,7 +19,7 @@ class RaceModel {
   final List<Map<String, dynamic>> finishers;
 
   // Global Alerts
-  final String? alertType; // e.g. 'countdown_start', 'countdown_finish', 'paused', 'info'
+  final String? alertType; // 'countdown_start', 'countdown_finish', 'paused', 'info'
   final String? alertMessage;
   final DateTime? alertTargetTime;
 

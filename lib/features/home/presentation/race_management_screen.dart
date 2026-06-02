@@ -701,28 +701,49 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           );
                                         },
                                       ),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 20),
-                                        child: Divider(), 
-                                      ),
-
-                                      ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
-                                          child: const Icon(Icons.campaign, color: Colors.blueAccent),
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 20),
+                                          child: Divider(), 
                                         ),
-                                        title: const Text("Crear Aviso", style: TextStyle(fontWeight: FontWeight.bold)),
-                                        subtitle: const Text("Enviar notificación push a todos"),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          _showCustomMessageDialog(context, race.raceId);
-                                        },
-                                      ),
-                                    ],
+
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
+                                            child: const Icon(Icons.campaign, color: Colors.blueAccent),
+                                          ),
+                                          title: const Text("Crear Aviso", style: TextStyle(fontWeight: FontWeight.bold)),
+                                          subtitle: const Text("Enviar notificación push a todos"),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _showCustomMessageDialog(context, race.raceId);
+                                          },
+                                        ),
+                                        
+                                        if (race.status == 'finished')
+                                          ListTile(
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), shape: BoxShape.circle),
+                                              child: const Icon(Icons.archive, color: Colors.purple),
+                                            ),
+                                            title: const Text("Archivar Carrera (Borrar)", style: TextStyle(fontWeight: FontWeight.bold)),
+                                            subtitle: const Text("Limpiará datos y guardará el Podio de 3", style: TextStyle(fontSize: 11)),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              _showDoubleConfirmationDialog(
+                                                context, 
+                                                onConfirm: () async {
+                                                  await RaceService.instance.archiveRaceAndKeepPodium(race);
+                                                  if (context.mounted) Navigator.pop(context); // Cierra Admin Screen
+                                                }
+                                              );
+                                            },
+                                          ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
                             },
                           );
                         },
@@ -832,6 +853,44 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               }
             },
             child: const Text("Enviar a Todos", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDoubleConfirmationDialog(BuildContext context, {required VoidCallback onConfirm}) {
+    showDialog(
+      context: context,
+      builder: (ctx1) => AlertDialog(
+        title: const Text("Paso 1: Confirmación de Borrado", style: TextStyle(color: Colors.red)),
+        content: const Text("¿Estás seguro de que quieres archivar esta carrera? Los datos pesados se eliminarán para ahorrar espacio, conservando únicamente el top 3 del podio."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx1), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx1);
+              showDialog(
+                context: context,
+                builder: (ctx2) => AlertDialog(
+                  title: const Text("Paso 2: Confirmación Definitiva", style: TextStyle(color: Colors.red)),
+                  content: const Text("¡ATENCIÓN! Esta acción NO se puede deshacer. ¿Proceder con el borrado/archivado?"),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx2), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      onPressed: () {
+                        Navigator.pop(ctx2);
+                        onConfirm();
+                      },
+                      child: const Text("Archivar Definitivamente", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: const Text("Siguiente Paso", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

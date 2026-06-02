@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -126,10 +127,16 @@ class _HomeScreenState extends State<HomeScreen> {
           _globalAlertTargetTime = race.alertTargetTime;
           
           if (_globalAlertType != null && (_globalAlertType != previousAlert || _globalAlertMessage != previousAlertMsg)) {
+            String notifBody = _globalAlertMessage ?? "Alerta importante";
+            if (_globalAlertType == 'countdown_start') {
+              notifBody = "¡Preparados! La carrera está por comenzar.";
+            } else if (_globalAlertType == 'countdown_finish') {
+              notifBody = "¡Atención! La carrera está por terminar.";
+            }
             NotificationService.instance.showNotification(
               id: 0,
               title: "Aviso de Carrera",
-              body: _globalAlertMessage ?? "Alerta importante",
+              body: notifBody,
             );
           }
           
@@ -149,7 +156,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
                   final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
                   RaceService.instance.submitRaceResult(doc.id, myUid, myName, myPhoto, 0, true);
-                  LocalDatabase.instance.saveRaceHistory(doc.id, race.name, 0, true);
+                  
+                  final userProv = Provider.of<UserProvider>(context, listen: false);
+                  final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                  
+                  LocalDatabase.instance.saveRaceHistory(
+                    doc.id, 
+                    race.name, 
+                    0, 
+                    true,
+                    bibNumber: userProv.userData?.activeBibNumber ?? 'N/A',
+                    distanceFormatted: runProv.distanceFormatted,
+                    organizerName: 'Organizador Oficial',
+                  );
                }
                
                if (mounted) {
@@ -391,7 +410,23 @@ class _HomeScreenState extends State<HomeScreen> {
                    
                    if (myUid != null) {
                      await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, timeInSecs, false);
-                     await LocalDatabase.instance.saveRaceHistory(raceId, _activeRaceName, timeInSecs, false);
+                     
+                     final userProv = Provider.of<UserProvider>(context, listen: false);
+                     final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                     
+                     
+                     String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
+                     
+                     await LocalDatabase.instance.saveRaceHistory(
+                       raceId, 
+                       _activeRaceName, 
+                       timeInSecs, 
+                       false,
+                       bibNumber: userProv.userData?.activeBibNumber ?? 'N/A',
+                       distanceFormatted: runProv.distanceFormatted,
+                       organizerName: 'Organizador Oficial',
+                       routeJson: routeJson,
+                     );
                    }
                    if (mounted) {
                      _showRaceFinishedDialog(false, timeInSecs);
@@ -410,7 +445,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
                       if (myUid != null) {
                         await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true);
-                        await LocalDatabase.instance.saveRaceHistory(raceId, _activeRaceName, 0, true);
+                        
+                        final userProv = Provider.of<UserProvider>(context, listen: false);
+                        final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                        
+                        String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
+                        
+                        await LocalDatabase.instance.saveRaceHistory(
+                          raceId, 
+                          _activeRaceName, 
+                          0, 
+                          true,
+                          bibNumber: userProv.userData?.activeBibNumber ?? 'N/A',
+                          distanceFormatted: runProv.distanceFormatted,
+                          organizerName: 'Organizador Oficial',
+                          routeJson: routeJson,
+                        );
                       }
                       if (mounted) {
                         _showRaceFinishedDialog(true, 0);
@@ -589,16 +639,16 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 20,
               child: FloatingActionButton(
                 onPressed: () {
-                  if (_isTracking) {
+                  if (_isTracking || _isPaused) {
                     _showTrackingDialog(isTrial, user?.activeRaceId);
                   } else {
                     _showTrainingOptions(isTrial, user?.activeRaceId);
                   }
                 },
-                backgroundColor: _isTracking ? Colors.red : Colors.blueAccent,
+                backgroundColor: (_isTracking && !_isPaused) ? Colors.red : Colors.blueAccent,
                 foregroundColor: Colors.white,
                 elevation: 8,
-                child: Icon(_isTracking ? Icons.stop : Icons.directions_run, size: 30),
+                child: Icon((_isTracking && !_isPaused) ? Icons.pause : Icons.directions_run, size: 30),
               ),
             )
           else if (user?.activeBibNumber != null)
@@ -700,48 +750,96 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showTrackingDialog(bool isTrialUser, String? raceId) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(_isTracking ? Icons.warning_amber_rounded : Icons.directions_run, 
-                 color: _isTracking ? Colors.red : Colors.blueAccent, size: 30),
-            const SizedBox(width: 10),
-            Expanded(child: Text(_isTracking ? "Detener Ruta" : "Nuevo Entrenamiento")),
-          ],
-        ),
-        content: Text(
-          _isTracking 
-            ? "¿Estás seguro de que deseas detener tu entrenamiento actual? Se guardará tu progreso." 
-            : "¿Deseas iniciar un nuevo recorrido de entrenamiento libre?",
-          style: const TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isTracking ? Colors.red : Colors.blueAccent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: const Color(0xFF0F172A),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Control de Entrenamiento",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                if (!_isPaused)
+                  ListTile(
+                    leading: const Icon(Icons.pause, color: Colors.orange, size: 30),
+                    title: const Text("Pausar", style: TextStyle(color: Colors.white)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pauseTracking();
+                    },
+                  )
+                else
+                  ListTile(
+                    leading: const Icon(Icons.play_arrow, color: Colors.green, size: 30),
+                    title: const Text("Reanudar", style: TextStyle(color: Colors.white)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _resumeTracking();
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.stop, color: Colors.redAccent, size: 30),
+                  title: const Text("Terminar y Guardar", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _finishAndSaveFreeTraining();
+                  },
+                ),
+              ],
             ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (_isTracking) {
-                _stopTracking();
-              } else {
-                _startTracking(isTrialUser, raceId);
-              }
-            },
-            child: Text(_isTracking ? "Sí, Detener" : "Sí, Iniciar", style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  bool _isPaused = false;
+
+  void _pauseTracking() {
+    setState(() => _isPaused = true);
+    Provider.of<RunStateProvider>(context, listen: false).setTrackingStatus(false);
+    _positionStreamSubscription?.pause();
+  }
+
+  void _resumeTracking() {
+    setState(() => _isPaused = false);
+    Provider.of<RunStateProvider>(context, listen: false).setTrackingStatus(true);
+    _positionStreamSubscription?.resume();
+  }
+
+  void _finishAndSaveFreeTraining() {
+    _stopTracking();
+    
+    final runProv = Provider.of<RunStateProvider>(context, listen: false);
+    if (runProv.durationInSeconds > 0 || runProv.totalDistanceMeters > 0) {
+      final timeId = DateTime.now().millisecondsSinceEpoch.toString();
+      String routeJson = jsonEncode(_routePoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
+      
+      LocalDatabase.instance.saveRaceHistory(
+        'free_training_$timeId',
+        'Entrenamiento Libre',
+        runProv.durationInSeconds,
+        false,
+        bibNumber: 'N/A',
+        distanceFormatted: runProv.distanceFormatted,
+        organizerName: Provider.of<UserProvider>(context, listen: false).userData?.displayName ?? 'Mismo Usuario',
+        routeJson: routeJson,
+      );
+    }
+    
+    runProv.reset();
+    setState(() {
+      _totalDistanceMeters = 0.0;
+      _currentSpeed = 0.0;
+      _isPaused = false;
+    });
   }
 
   void _showRaceFinishedDialog(bool disqualified, int timeInSecs) {
@@ -895,7 +993,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getRaceStatusText(bool hasActiveRace) {
     if (!hasActiveRace) {
-       return _isTracking ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h" : "Señal GPS Estable";
+       if (_isPaused) return "ENTRENAMIENTO PAUSADO";
+       return _isTracking ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h" : "LISTO PARA INICIAR";
     }
     
     if (_isDisqualified) return "DESCALIFICADO";

@@ -4,8 +4,15 @@ import '../data/models/race_model.dart';
 import 'race_management_screen.dart'; 
 import 'race_summary_screen.dart';
 
-class RaceHistoryScreen extends StatelessWidget {
+class RaceHistoryScreen extends StatefulWidget {
   const RaceHistoryScreen({super.key});
+
+  @override
+  State<RaceHistoryScreen> createState() => _RaceHistoryScreenState();
+}
+
+class _RaceHistoryScreenState extends State<RaceHistoryScreen> {
+  int _visibleCount = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +45,7 @@ class RaceHistoryScreen extends StatelessWidget {
           }
 
           final races = snapshot.data ?? [];
+          races.sort((a, b) => b.date.compareTo(a.date));
 
           if (races.isEmpty) {
             return _buildEmptyState(theme);
@@ -45,8 +53,30 @@ class RaceHistoryScreen extends StatelessWidget {
 
           return ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: races.length,
+            itemCount: races.length > _visibleCount ? _visibleCount + 1 : races.length,
             itemBuilder: (context, index) {
+              if (index == _visibleCount) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _visibleCount += 10;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        side: BorderSide(color: theme.colorScheme.primary),
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text("Ver más", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                );
+              }
+
               final race = races[index];
               return _buildHistoryCard(context, race, theme, isDark);
             },
@@ -105,7 +135,39 @@ class RaceHistoryScreen extends StatelessWidget {
           "${race.participants.length} participantes • FINALIZADA",
           style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 12),
         ),
-        trailing: Icon(Icons.visibility, color: theme.colorScheme.onSurface.withOpacity(0.3), size: 20),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (race.status != 'archived')
+              IconButton(
+                icon: const Icon(Icons.archive, color: Colors.redAccent, size: 20),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text("Archivar/Borrar Carrera", style: TextStyle(color: Colors.red)),
+                      content: const Text("Esto limpiará la mayoría de datos pesados para liberar espacio y la ocultará, pero preservará el podio y la ruta. ¿Continuar?"),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await RaceService.instance.archiveRaceAndKeepPodium(race);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Carrera archivada")));
+                            }
+                          },
+                          child: const Text("Sí, Archivar", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            Icon(Icons.visibility, color: theme.colorScheme.onSurface.withOpacity(0.3), size: 20),
+          ],
+        ),
         onTap: () {
           Navigator.push(
             context,

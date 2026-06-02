@@ -42,7 +42,7 @@ class RaceService {
   Stream<List<RaceModel>> getRaceHistory() {
     return _firestore
         .collection('races')
-        .where('status', isEqualTo: 'finished') 
+        .where('status', whereIn: ['finished', 'archived']) 
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => RaceModel.fromMap(doc.data(), doc.id))
@@ -140,6 +140,30 @@ class RaceService {
     
     await _firestore.collection('races').doc(raceId).update({
       'finishers': FieldValue.arrayUnion([result]),
+    });
+  }
+
+  Future<void> archiveRaceAndKeepPodium(RaceModel race) async {
+    List<Map<String, dynamic>> validFinishers = List.from(race.finishers);
+    validFinishers.removeWhere((f) => f['isDisqualified'] == true);
+    
+    // Ordenar por tiempo
+    validFinishers.sort((a, b) {
+      int timeA = a['timeInSeconds'] ?? 999999;
+      int timeB = b['timeInSeconds'] ?? 999999;
+      return timeA.compareTo(timeB);
+    });
+    
+    // Tomar solo el top 3
+    final podium = validFinishers.take(3).toList();
+
+    await _firestore.collection('races').doc(race.raceId).update({
+      'status': 'archived',
+      'finishers': podium,
+      'participants': [], // Limpiar participantes
+      'alertType': FieldValue.delete(),
+      'alertMessage': FieldValue.delete(),
+      'alertTargetTime': FieldValue.delete(),
     });
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../data/models/race_model.dart';
 import 'package:intl/intl.dart';
 import 'runners_list_screen.dart';
@@ -140,21 +141,64 @@ class RaceSummaryScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: theme.dividerColor),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: theme.colorScheme.primary.withOpacity(0.05),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.map, size: 40, color: theme.colorScheme.primary.withOpacity(0.5)),
-                      const SizedBox(height: 10),
-                      Text("Mapa estático de la ruta", style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: race.route.isEmpty 
+                  ? Container(
+                      color: theme.colorScheme.primary.withOpacity(0.05),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.map, size: 40, color: theme.colorScheme.primary.withOpacity(0.5)),
+                            const SizedBox(height: 10),
+                            Text("No se registró ruta", style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Builder(
+                      builder: (context) {
+                        List<LatLng> points = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+                        
+                        LatLngBounds bounds;
+                        if (points.length == 1) {
+                          bounds = LatLngBounds(southwest: points.first, northeast: points.first);
+                        } else {
+                          double south = points.first.latitude;
+                          double north = points.first.latitude;
+                          double west = points.first.longitude;
+                          double east = points.first.longitude;
+                          for (var p in points) {
+                            if (p.latitude < south) south = p.latitude;
+                            if (p.latitude > north) north = p.latitude;
+                            if (p.longitude < west) west = p.longitude;
+                            if (p.longitude > east) east = p.longitude;
+                          }
+                          bounds = LatLngBounds(southwest: LatLng(south, west), northeast: LatLng(north, east));
+                        }
+
+                        return GoogleMap(
+                          initialCameraPosition: CameraPosition(target: points.first, zoom: 14),
+                          myLocationEnabled: false,
+                          zoomControlsEnabled: false,
+                          scrollGesturesEnabled: false,
+                          polylines: {
+                            Polyline(
+                              polylineId: const PolylineId('history_route'),
+                              points: points,
+                              color: Colors.blueAccent,
+                              width: 5,
+                            )
+                          },
+                          onMapCreated: (controller) {
+                            Future.delayed(const Duration(milliseconds: 300), () {
+                              controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 20));
+                            });
+                          },
+                        );
+                      },
+                    ),
               ),
             ),
 

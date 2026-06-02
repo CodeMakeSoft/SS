@@ -20,7 +20,7 @@ class LocalDatabase {
     // Si quieres borrar la BD en pruebas, puedes descomentar la siguiente línea:
     // await deleteDatabase(path);
 
-    return await openDatabase(path, version: 2, onCreate: _createDB, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 4, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -35,6 +35,20 @@ class LocalDatabase {
           timestamp INTEGER NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE race_history ADD COLUMN bibNumber TEXT');
+        await db.execute('ALTER TABLE race_history ADD COLUMN distanceFormatted TEXT');
+        await db.execute('ALTER TABLE race_history ADD COLUMN organizerName TEXT');
+      } catch (e) {
+        // Ignorar si las columnas ya existen
+      }
+    }
+    if (oldVersion < 4) {
+      try {
+        await db.execute('ALTER TABLE race_history ADD COLUMN routeJson TEXT');
+      } catch (e) {}
     }
   }
 
@@ -57,7 +71,11 @@ class LocalDatabase {
         raceName TEXT NOT NULL,
         timeInSeconds INTEGER NOT NULL,
         isDisqualified INTEGER NOT NULL,
-        timestamp INTEGER NOT NULL
+        timestamp INTEGER NOT NULL,
+        bibNumber TEXT,
+        distanceFormatted TEXT,
+        organizerName TEXT,
+        routeJson TEXT
       )
     ''');
   }
@@ -94,7 +112,16 @@ class LocalDatabase {
     await db.delete('location_points');
   }
 
-  Future<void> saveRaceHistory(String raceId, String raceName, int timeInSeconds, bool isDisqualified) async {
+  Future<void> saveRaceHistory(
+    String raceId, 
+    String raceName, 
+    int timeInSeconds, 
+    bool isDisqualified, {
+    String? bibNumber,
+    String? distanceFormatted,
+    String? organizerName,
+    String? routeJson,
+  }) async {
     final db = await instance.database;
     await db.insert('race_history', {
       'raceId': raceId,
@@ -102,11 +129,20 @@ class LocalDatabase {
       'timeInSeconds': timeInSeconds,
       'isDisqualified': isDisqualified ? 1 : 0,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'bibNumber': bibNumber,
+      'distanceFormatted': distanceFormatted,
+      'organizerName': organizerName,
+      'routeJson': routeJson,
     });
   }
 
   Future<List<Map<String, dynamic>>> getRaceHistory() async {
     final db = await instance.database;
     return await db.query('race_history', orderBy: 'timestamp DESC');
+  }
+
+  Future<void> deleteRaceHistory(int id) async {
+    final db = await instance.database;
+    await db.delete('race_history', where: 'id = ?', whereArgs: [id]);
   }
 }

@@ -41,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _activeRaceName = "CARRERA OFICIAL";
   String _activeRaceStatus = "upcoming";
   String? _currentRaceId;
+  StreamSubscription<QuerySnapshot>? _liveLocationsSubscription;
+  final Map<String, BitmapDescriptor> _otherUsersMarkersIcons = {};
   
   @override
   void initState() {
@@ -74,7 +76,53 @@ class _HomeScreenState extends State<HomeScreen> {
         _activeRaceStatus = race.status;
       });
       _drawRaceRoute(race);
+      _startLiveLocationsStream(raceId);
     }
+  }
+
+  void _startLiveLocationsStream(String raceId) {
+    _liveLocationsSubscription?.cancel();
+    _liveLocationsSubscription = FirebaseFirestore.instance
+        .collection('races')
+        .doc(raceId)
+        .collection('live_locations')
+        .snapshots()
+        .listen((snapshot) async {
+      final String? myUid = FirebaseAuth.instance.currentUser?.uid;
+      
+      for (var doc in snapshot.docs) {
+        if (doc.id == myUid) continue; // No dibujarnos a nosotros mismos dos veces
+        
+        final data = doc.data();
+        final lat = data['latitude'] as double?;
+        final lng = data['longitude'] as double?;
+        final photoUrl = data['photoUrl'] as String?;
+        
+        if (lat == null || lng == null) continue;
+        
+        if (!_otherUsersMarkersIcons.containsKey(doc.id)) {
+           final icon = await RunnerMarkerWidget(photoUrl: photoUrl).toBitmapDescriptor(
+              logicalSize: const Size(60, 60), 
+              imageSize: const Size(60, 60),
+           );
+           _otherUsersMarkersIcons[doc.id] = icon;
+        }
+
+        if (mounted) {
+          setState(() {
+            _markers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
+            _markers.add(
+              Marker(
+                markerId: MarkerId('runner_${doc.id}'),
+                position: LatLng(lat, lng),
+                icon: _otherUsersMarkersIcons[doc.id]!,
+                anchor: const Offset(0.5, 0.5),
+              )
+            );
+          });
+        }
+      }
+    });
   }
 
   void _drawRaceRoute(RaceModel race) {
@@ -210,6 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _stopTracking();
+    _liveLocationsSubscription?.cancel();
     super.dispose();
   }
 
@@ -231,7 +280,11 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               _activeRaceName = "CARRERA OFICIAL";
               _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');
-              _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || m.markerId.value == 'end_checkpoint');
+              _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || 
+                                          m.markerId.value == 'end_checkpoint' || 
+                                          (m.markerId.value.startsWith('runner_') && m.markerId.value != 'runner_me'));
+              _liveLocationsSubscription?.cancel();
+              _otherUsersMarkersIcons.clear();
             });
           }
         }

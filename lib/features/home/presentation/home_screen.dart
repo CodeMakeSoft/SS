@@ -229,10 +229,12 @@ class _HomeScreenState extends State<HomeScreen> {
               _totalDistanceMeters += distanceChunk;
             }
             _currentSpeed = position.speed;
-            Provider.of<RunStateProvider>(
-              context,
-              listen: false,
-            ).updateStats(distance: _totalDistanceMeters, speed: _currentSpeed);
+            if (mounted) {
+              Provider.of<RunStateProvider>(
+                context,
+                listen: false,
+              ).updateStats(distance: _totalDistanceMeters, speed: _currentSpeed);
+            }
             await LocalDatabase.instance.insertLocation(
               position.latitude,
               position.longitude,
@@ -417,6 +419,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.white,
                 elevation: 8,
                 child: Icon(_isTracking ? Icons.stop : Icons.directions_run, size: 30),
+              ),
+            )
+          else if (user?.activeBibNumber != null)
+            Positioned(
+              bottom: 120,
+              right: 20,
+              child: Container(
+                width: 65,
+                height: 55,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    )
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        color: Colors.blueAccent,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          user!.activeBibNumber!,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            letterSpacing: -1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],

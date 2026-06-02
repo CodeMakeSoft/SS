@@ -95,6 +95,11 @@ class RaceService {
       'activeRaceId': null,
       'activeBibNumber': null,
     });
+    
+    batch.delete(
+      _firestore.collection('races').doc(raceId).collection('live_locations').doc(userId)
+    );
+
     await batch.commit();
   }
 }

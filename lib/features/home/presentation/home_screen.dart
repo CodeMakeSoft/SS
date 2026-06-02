@@ -97,10 +97,23 @@ class _HomeScreenState extends State<HomeScreen> {
         .listen((snapshot) async {
       final String? myUid = FirebaseAuth.instance.currentUser?.uid;
       
-      for (var doc in snapshot.docs) {
+      for (var change in snapshot.docChanges) {
+        final doc = change.doc;
         if (doc.id == myUid) continue; // No dibujarnos a nosotros mismos dos veces
         
+        if (change.type == DocumentChangeType.removed) {
+          if (mounted) {
+            setState(() {
+              _markers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
+              _otherUsersMarkersIcons.remove(doc.id);
+            });
+          }
+          continue;
+        }
+
         final data = doc.data();
+        if (data == null) continue;
+
         final lat = data['latitude'] as double?;
         final lng = data['longitude'] as double?;
         final photoUrl = data['photoUrl'] as String?;
@@ -108,11 +121,16 @@ class _HomeScreenState extends State<HomeScreen> {
         if (lat == null || lng == null) continue;
         
         if (!_otherUsersMarkersIcons.containsKey(doc.id)) {
-           final icon = await RunnerMarkerWidget(photoUrl: photoUrl).toBitmapDescriptor(
-              logicalSize: const Size(60, 60), 
-              imageSize: const Size(60, 60),
-           );
-           _otherUsersMarkersIcons[doc.id] = icon;
+           try {
+             final icon = await RunnerMarkerWidget(photoUrl: photoUrl).toBitmapDescriptor(
+                logicalSize: const Size(60, 60), 
+                imageSize: const Size(60, 60),
+             );
+             _otherUsersMarkersIcons[doc.id] = icon;
+           } catch (e) {
+             debugPrint("Error generating photo marker for ${doc.id}: $e");
+             _otherUsersMarkersIcons[doc.id] = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+           }
         }
 
         if (mounted) {
@@ -209,6 +227,27 @@ class _HomeScreenState extends State<HomeScreen> {
       listen: false,
     ).setTrackingStatus(true);
 
+    final runStateProvider = Provider.of<RunStateProvider>(context, listen: false);
+
+    try {
+      Position? initialPos = await Geolocator.getLastKnownPosition();
+      if (initialPos == null) {
+        initialPos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+      }
+      await LocalDatabase.instance.insertLocation(initialPos.latitude, initialPos.longitude, initialPos.speed);
+      if (raceId != null) {
+        debugPrint("DEBUG Runner Map: Sincronizando ubicación inicial a Firebase...");
+        LocationSyncService.instance.syncLocations(raceId);
+      } else {
+        debugPrint("DEBUG Runner Map: No se sincronizó la ubicación. isTrialUser=$isTrialUser, raceId=$raceId");
+      }
+    } catch (e) {
+      debugPrint("Error obteniendo ubicacion inicial: $e");
+    }
+
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 1,
@@ -230,20 +269,19 @@ class _HomeScreenState extends State<HomeScreen> {
             }
             _currentSpeed = position.speed;
             if (mounted) {
-              Provider.of<RunStateProvider>(
-                context,
-                listen: false,
-              ).updateStats(distance: _totalDistanceMeters, speed: _currentSpeed);
+              runStateProvider.updateStats(distance: _totalDistanceMeters, speed: _currentSpeed);
             }
             await LocalDatabase.instance.insertLocation(
               position.latitude,
               position.longitude,
               position.speed,
             );
-            if(!isTrialUser && raceId != null) {
+            if(raceId != null) {
+              debugPrint("DEBUG Runner Map: Sincronizando ubicación en movimiento...");
               LocationSyncService.instance.syncLocations(raceId);
             }
 
+            if (!mounted) return;
             setState(() {
               _routePoints.add(newPoint);
             });
@@ -256,6 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _stopTracking() {
+    if (!mounted) return;
     setState(() => _isTracking = false);
     Provider.of<RunStateProvider>(
       context,

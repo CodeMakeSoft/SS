@@ -8,6 +8,8 @@ import 'runners_list_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:widget_to_marker/widget_to_marker.dart';
+import 'home_screen.dart';
 
 class RaceManagementScreen extends StatefulWidget {
   final RaceModel race;
@@ -19,6 +21,81 @@ class RaceManagementScreen extends StatefulWidget {
 
 class _RaceManagementScreenState extends State<RaceManagementScreen> {
   final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
+  
+  final Set<Marker> _runnersMarkers = {};
+  final Map<String, BitmapDescriptor> _runnersMarkersIcons = {};
+  StreamSubscription<QuerySnapshot>? _runnersSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTrackingRunners();
+  }
+
+  @override
+  void dispose() {
+    _runnersSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _startTrackingRunners() {
+    _runnersSubscription = FirebaseFirestore.instance
+        .collection('races')
+        .doc(widget.race.raceId)
+        .collection('live_locations')
+        .snapshots()
+        .listen((snapshot) async {
+      for (var change in snapshot.docChanges) {
+        final doc = change.doc;
+        
+        if (change.type == DocumentChangeType.removed) {
+          if (mounted) {
+            setState(() {
+              _runnersMarkers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
+              _runnersMarkersIcons.remove(doc.id);
+            });
+          }
+          continue;
+        }
+
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        
+        final lat = data['latitude'] as double?;
+        final lng = data['longitude'] as double?;
+        final photoUrl = data['photoUrl'] as String?;
+        
+        if (lat == null || lng == null) continue;
+        
+        if (!_runnersMarkersIcons.containsKey(doc.id)) {
+           try {
+             final icon = await RunnerMarkerWidget(photoUrl: photoUrl).toBitmapDescriptor(
+                logicalSize: const Size(60, 60), 
+                imageSize: const Size(60, 60),
+             );
+             _runnersMarkersIcons[doc.id] = icon;
+           } catch (e) {
+             debugPrint("Error generating photo marker for ${doc.id}: $e");
+             _runnersMarkersIcons[doc.id] = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+           }
+        }
+
+        if (mounted) {
+          setState(() {
+            _runnersMarkers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
+            _runnersMarkers.add(
+              Marker(
+                markerId: MarkerId('runner_${doc.id}'),
+                position: LatLng(lat, lng),
+                icon: _runnersMarkersIcons[doc.id]!,
+                anchor: const Offset(0.5, 0.5),
+              )
+            );
+          });
+        }
+      }
+    });
+  }
 
   Future<void> _getUserLocation() async {
     bool serviceEnabled;
@@ -256,7 +333,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               zoom: 15,
             ),
             onMapCreated: (controller) => _mapController.complete(controller),
-            myLocationEnabled: true,
+            myLocationEnabled: false,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapType: MapType.normal,
@@ -287,6 +364,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
                   infoWindow: const InfoWindow(title: 'Meta'),
                 ),
+              ..._runnersMarkers,
             },
           ),
 

@@ -1,6 +1,7 @@
 import 'local_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LocationSyncService {
   static final LocationSyncService instance = LocationSyncService(LocalDatabase.instance);
@@ -23,6 +24,21 @@ class LocationSyncService {
           'speed': point['speed'],
           }
         );
+      }
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final photoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+      
+      if (userId != null) {
+         final lastPoint = unsynced.last;
+         final liveDoc = FirebaseFirestore.instance.collection('races').doc(raceId).collection('live_locations').doc(userId);
+         
+         batch.set(liveDoc, {
+             'latitude': lastPoint['latitude'],
+             'longitude': lastPoint['longitude'],
+             'speed': lastPoint['speed'],
+             'photoUrl': photoUrl,
+             'timestamp': FieldValue.serverTimestamp(),
+         });
       }
       await batch.commit();
       final ids = unsynced.map((e) => e['id'] as int).toList();

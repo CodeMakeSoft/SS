@@ -38,7 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isTracking = false;
   Set<Marker> _markers = {};
   BitmapDescriptor? _customMarkerIcon;
-  String _activeRaceName = "CARRERA";
+  String _activeRaceName = "CARRERA OFICIAL";
+  String _activeRaceStatus = "upcoming";
+  String? _currentRaceId;
   
   @override
   void initState() {
@@ -61,20 +63,18 @@ class _HomeScreenState extends State<HomeScreen> {
         imageSize: const Size(60, 60),
       ).then((icon) => _customMarkerIcon = icon);
     }
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final user = Provider.of<UserProvider>(context, listen: false).userData;
-      if (user?.activeRaceId != null) {
-        final doc = await FirebaseFirestore.instance.collection('races').doc(user!.activeRaceId).get();
-        if (doc.exists && mounted) {
-          final race = RaceModel.fromMap(doc.data()!, doc.id);
-          setState(() {
-            _activeRaceName = race.name;
-          });
-          _drawRaceRoute(race);
-        }
-      }
-    });
+  Future<void> _fetchActiveRaceData(String raceId) async {
+    final doc = await FirebaseFirestore.instance.collection('races').doc(raceId).get();
+    if (doc.exists && mounted) {
+      final race = RaceModel.fromMap(doc.data()!, doc.id);
+      setState(() {
+        _activeRaceName = race.name;
+        _activeRaceStatus = race.status;
+      });
+      _drawRaceRoute(race);
+    }
   }
 
   void _drawRaceRoute(RaceModel race) {
@@ -94,14 +94,14 @@ class _HomeScreenState extends State<HomeScreen> {
       markerId: const MarkerId('start_checkpoint'),
       position: racePoints.first,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-      infoWindow: const InfoWindow(title: '🏁 Salida'),
+      infoWindow: const InfoWindow(title: 'Salida'),
     );
 
     final Marker endCheckpoint = Marker(
       markerId: const MarkerId('end_checkpoint'),
       position: racePoints.last,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      infoWindow: const InfoWindow(title: '🏆 Meta'),
+      infoWindow: const InfoWindow(title: 'Meta'),
     );
 
     setState(() {
@@ -221,6 +221,23 @@ class _HomeScreenState extends State<HomeScreen> {
     bool hasActiveRace = user?.activeRaceId != null;
     bool isTrial = user?.role == 'trial' || (!isAdmin && !hasActiveRace);
 
+    if (user?.activeRaceId != _currentRaceId) {
+      _currentRaceId = user?.activeRaceId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_currentRaceId != null) {
+          _fetchActiveRaceData(_currentRaceId!);
+        } else {
+          if (mounted) {
+            setState(() {
+              _activeRaceName = "CARRERA OFICIAL";
+              _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');
+              _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || m.markerId.value == 'end_checkpoint');
+            });
+          }
+        }
+      });
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Stack(
@@ -309,27 +326,116 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
-          Positioned(
-            bottom: 160, 
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: () {
-                if (_isTracking) {
-                  _stopTracking();
-                } else {
-                  _startTracking(isTrial, user?.activeRaceId);
-                }
-              },
-              backgroundColor: _isTracking
-                  ? Colors.red
-                  : const Color(0xFF0F172A),
-              foregroundColor: Colors.white,
-              elevation: 4,
-              child: Icon(
-                _isTracking ? Icons.stop : Icons.play_arrow,
+          if (!hasActiveRace)
+            Positioned(
+              bottom: 120,
+              right: 20,
+              child: FloatingActionButton(
+                onPressed: () {
+                  if (_isTracking) {
+                    _showTrackingDialog(isTrial, user?.activeRaceId);
+                  } else {
+                    _showTrainingOptions(isTrial, user?.activeRaceId);
+                  }
+                },
+                backgroundColor: _isTracking ? Colors.red : Colors.blueAccent,
+                foregroundColor: Colors.white,
+                elevation: 8,
+                child: Icon(_isTracking ? Icons.stop : Icons.directions_run, size: 30),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showTrainingOptions(bool isTrialUser, String? raceId) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: const Color(0xFF0F172A),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Elige tu Entrenamiento",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: const Icon(Icons.directions_run, color: Colors.blueAccent, size: 30),
+                  title: const Text("Entrenamiento Libre", style: TextStyle(color: Colors.white)),
+                  subtitle: const Text("Corre sin límites", style: TextStyle(color: Colors.white54)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _startTracking(isTrialUser, raceId);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.timer, color: Colors.grey, size: 30),
+                  title: const Text("Por Tiempo", style: TextStyle(color: Colors.grey)),
+                  subtitle: const Text("Próximamente", style: TextStyle(color: Colors.white38)),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.map, color: Colors.grey, size: 30),
+                  title: const Text("Por Distancia", style: TextStyle(color: Colors.grey)),
+                  subtitle: const Text("Próximamente", style: TextStyle(color: Colors.white38)),
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTrackingDialog(bool isTrialUser, String? raceId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(_isTracking ? Icons.warning_amber_rounded : Icons.directions_run, 
+                 color: _isTracking ? Colors.red : Colors.blueAccent, size: 30),
+            const SizedBox(width: 10),
+            Expanded(child: Text(_isTracking ? "Detener Ruta" : "Nuevo Entrenamiento")),
+          ],
+        ),
+        content: Text(
+          _isTracking 
+            ? "¿Estás seguro de que deseas detener tu entrenamiento actual? Se guardará tu progreso." 
+            : "¿Deseas iniciar un nuevo recorrido de entrenamiento libre?",
+          style: const TextStyle(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isTracking ? Colors.red : Colors.blueAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (_isTracking) {
+                _stopTracking();
+              } else {
+                _startTracking(isTrialUser, raceId);
+              }
+            },
+            child: Text(_isTracking ? "Sí, Detener" : "Sí, Iniciar", style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

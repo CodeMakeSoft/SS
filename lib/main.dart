@@ -13,6 +13,8 @@ import 'features/home/providers/user_provider.dart';
 
 import 'features/home/providers/theme_provider.dart';
 
+import 'core/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   

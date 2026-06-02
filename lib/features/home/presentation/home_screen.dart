@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/race_model.dart';
 import '../data/race_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,8 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isTracking = false;
   Set<Marker> _markers = {};
   BitmapDescriptor? _customMarkerIcon;
-  String _activeRaceName = "CARRERA OFICIAL";
+  String _activeRaceName = "Sin carrera activa";
   String _activeRaceStatus = "upcoming";
+  
+  // Global Alert State
+  String? _globalAlertType;
+  String? _globalAlertMessage;
+  DateTime? _globalAlertTargetTime;
   String? _currentRaceId;
   StreamSubscription<DocumentSnapshot>? _raceDataSubscription;
   StreamSubscription<QuerySnapshot>? _liveLocationsSubscription;
@@ -77,6 +83,20 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _activeRaceName = race.name;
           _activeRaceStatus = race.status;
+          
+          final previousAlert = _globalAlertType;
+          
+          _globalAlertType = race.alertType;
+          _globalAlertMessage = race.alertMessage;
+          _globalAlertTargetTime = race.alertTargetTime;
+          
+          if (_globalAlertType != null && _globalAlertType != previousAlert) {
+            NotificationService.instance.showNotification(
+              id: 0,
+              title: "Aviso de Carrera",
+              body: _globalAlertMessage ?? "Alerta importante",
+            );
+          }
           
           _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');
           _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || m.markerId.value == 'end_checkpoint');
@@ -442,6 +462,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          
+          if (_globalAlertType != null)
+            _buildGlobalAlertOverlay(),
+            
           if (!hasActiveRace)
             Positioned(
               bottom: 120,
@@ -631,6 +655,87 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text("Sí, Salir", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGlobalAlertOverlay() {
+    return Positioned.fill(
+      child: StreamBuilder(
+        stream: Stream.periodic(const Duration(seconds: 1)),
+        builder: (context, snapshot) {
+          int? secondsLeft;
+          if (_globalAlertTargetTime != null) {
+            final now = DateTime.now();
+            final difference = _globalAlertTargetTime!.difference(now);
+            secondsLeft = difference.inSeconds;
+            
+            if (secondsLeft != null && secondsLeft < -2 && _globalAlertType != 'paused') {
+              // Auto hide countdowns shortly after reaching zero
+              return const SizedBox();
+            }
+          }
+
+          IconData icon;
+          Color color;
+          if (_globalAlertType == 'paused') {
+            icon = Icons.pause_circle_filled;
+            color = Colors.orangeAccent;
+          } else if (_globalAlertType == 'custom_message') {
+            icon = Icons.campaign_rounded;
+            color = Colors.purpleAccent;
+          } else {
+            icon = Icons.warning_rounded;
+            color = Colors.redAccent;
+          }
+
+          return Container(
+              color: Colors.black.withOpacity(0.8),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color, size: 80),
+                    const SizedBox(height: 20),
+                  Text(
+                    _globalAlertMessage ?? "Alerta de Carrera",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  if (secondsLeft != null && secondsLeft >= 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Text(
+                        secondsLeft.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 100,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    )
+                  else if (secondsLeft != null && secondsLeft < 0 && _globalAlertType == 'countdown_start')
+                    const Padding(
+                      padding: EdgeInsets.only(top: 20),
+                      child: Text(
+                        "¡GO!",
+                        style: TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 100,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

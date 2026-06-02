@@ -102,4 +102,29 @@ class RaceService {
 
     await batch.commit();
   }
+
+  // --- Race Control & Alerts ---
+
+  // --- Race Control & Alerts ---
+
+  Future<void> sendGlobalAlert(String raceId, String type, String message, {int? countdownSeconds}) async {
+    DateTime? targetTime;
+    if (countdownSeconds != null) {
+      targetTime = DateTime.now().add(Duration(seconds: countdownSeconds));
+    }
+    
+    await _firestore.collection('races').doc(raceId).update({
+      'alertType': type,
+      'alertMessage': message,
+      'alertTargetTime': targetTime != null ? Timestamp.fromDate(targetTime) : null,
+    });
+  }
+
+  Future<void> clearGlobalAlert(String raceId) async {
+    await _firestore.collection('races').doc(raceId).update({
+      'alertType': FieldValue.delete(),
+      'alertMessage': FieldValue.delete(),
+      'alertTargetTime': FieldValue.delete(),
+    });
+  }
 }

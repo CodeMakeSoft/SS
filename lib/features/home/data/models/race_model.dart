@@ -16,6 +16,11 @@ class RaceModel {
   
   final List<GeoPoint> route;
 
+  // Global Alerts
+  final String? alertType; // e.g. 'countdown_start', 'countdown_finish', 'paused', 'info'
+  final String? alertMessage;
+  final DateTime? alertTargetTime;
+
   RaceModel({
     required this.raceId,
     required this.name,
@@ -30,6 +35,9 @@ class RaceModel {
     this.endTime,
     this.participants = const [],
     this.route = const [], 
+    this.alertType,
+    this.alertMessage,
+    this.alertTargetTime,
   });
 
   factory RaceModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -47,6 +55,9 @@ class RaceModel {
       endTime: (data['endTime'] as Timestamp?)?.toDate(),
       participants: List<String>.from(data['participants'] ?? []),
       route: List<GeoPoint>.from(data['route'] ?? []), 
+      alertType: data['alertType'],
+      alertMessage: data['alertMessage'],
+      alertTargetTime: (data['alertTargetTime'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -64,6 +75,9 @@ class RaceModel {
       'endTime': endTime,
       'participants': participants,
       'route': route, 
+      'alertType': alertType,
+      'alertMessage': alertMessage,
+      'alertTargetTime': alertTargetTime,
     };
   }
 }

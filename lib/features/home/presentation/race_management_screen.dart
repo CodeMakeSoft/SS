@@ -467,29 +467,25 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             );
                                           },
                                         ),
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20),
-                                          child: Divider(),
-                                        ),
-                                        if (race.status != 'finished')
-                                        ListTile(
-                                          leading: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(color: Colors.deepPurple.withOpacity(0.1), shape: BoxShape.circle),
-                                            child: const Icon(Icons.settings, color: Colors.deepPurple),
+                                        if (race.status == 'upcoming')
+                                          ListTile(
+                                            leading: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+                                              child: const Icon(Icons.edit, color: Colors.orange),
+                                            ),
+                                            title: const Text("Editar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                            subtitle: const Text("Modificar detalles y configuración"),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => CreateRaceScreen(raceToEdit: race),
+                                                ),
+                                              );
+                                            },
                                           ),
-                                          title: const Text("Opciones de Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
-                                          subtitle: const Text("Editar detalles"),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => CreateRaceScreen(raceToEdit: race),
-                                              ),
-                                            );
-                                          },
-                                        ),
                                       ],
                                     ),
                                   ),
@@ -606,8 +602,17 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             confirmText: 'Iniciar',
                                             color: Colors.green,
                                             icon: Icons.play_arrow,
-                                            onConfirm: () {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Iniciada')));
+                                            onConfirm: () async {
+                                              await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
+                                              await RaceService.instance.sendGlobalAlert(
+                                                race.raceId, 
+                                                'countdown_start', 
+                                                '¡Preparados! La carrera comienza en', 
+                                                countdownSeconds: 3,
+                                              );
+                                              Future.delayed(const Duration(seconds: 7), () {
+                                                RaceService.instance.clearGlobalAlert(race.raceId);
+                                              });
                                             },
                                           );
                                         }
@@ -616,24 +621,52 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                       ListTile(
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
-                                          child: const Icon(Icons.pause, color: Colors.orange),
+                                          decoration: BoxDecoration(color: (race.status == 'paused' ? Colors.green : Colors.orange).withOpacity(0.1), shape: BoxShape.circle),
+                                          child: Icon(race.status == 'paused' ? Icons.play_arrow : Icons.pause, color: race.status == 'paused' ? Colors.green : Colors.orange),
                                         ),
-                                        title: const Text("Pausar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        title: Text(race.status == 'paused' ? "Reanudar Carrera" : "Pausar Carrera", style: const TextStyle(fontWeight: FontWeight.bold)),
                                         onTap: () {
                                           Navigator.pop(context); 
                                           
-                                          _showActionConfirmation(
-                                            context,
-                                            title: '¿Pausar Carrera?',
-                                            description: 'Se detendrá el cronómetro temporalmente. Podrás reanudarlo después.',
-                                            confirmText: 'Pausar',
-                                            color: Colors.orange,
-                                            icon: Icons.pause,
-                                            onConfirm: () {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Pausada')));
-                                            },
-                                          );
+                                          if (race.status == 'paused') {
+                                            _showActionConfirmation(
+                                              context,
+                                              title: '¿Reanudar Carrera?',
+                                              description: 'El cronómetro continuará su marcha.',
+                                              confirmText: 'Reanudar',
+                                              color: Colors.green,
+                                              icon: Icons.play_arrow,
+                                              onConfirm: () async {
+                                                await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
+                                                await RaceService.instance.sendGlobalAlert(
+                                                  race.raceId, 
+                                                  'countdown_start', 
+                                                  '¡La carrera se reanuda en', 
+                                                  countdownSeconds: 3,
+                                                );
+                                                Future.delayed(const Duration(seconds: 7), () {
+                                                  RaceService.instance.clearGlobalAlert(race.raceId);
+                                                });
+                                              },
+                                            );
+                                          } else {
+                                            _showActionConfirmation(
+                                              context,
+                                              title: '¿Pausar Carrera?',
+                                              description: 'Se detendrá el cronómetro temporalmente. Podrás reanudarlo después.',
+                                              confirmText: 'Pausar',
+                                              color: Colors.orange,
+                                              icon: Icons.pause,
+                                              onConfirm: () async {
+                                                await RaceService.instance.updateRaceStatus(race.raceId, 'paused');
+                                                await RaceService.instance.sendGlobalAlert(
+                                                  race.raceId, 
+                                                  'paused', 
+                                                  'Carrera Pausada', 
+                                                );
+                                              },
+                                            );
+                                          }
                                         }
                                       ),
                                       ListTile(
@@ -653,8 +686,17 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             confirmText: 'Finalizar',
                                             color: Colors.red,
                                             icon: Icons.stop,
-                                            onConfirm: () {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera Finalizada')));
+                                            onConfirm: () async {
+                                              await RaceService.instance.updateRaceStatus(race.raceId, 'finished');
+                                              await RaceService.instance.sendGlobalAlert(
+                                                race.raceId, 
+                                                'countdown_finish', 
+                                                'La carrera termina en', 
+                                                countdownSeconds: 5,
+                                              );
+                                              Future.delayed(const Duration(seconds: 8), () {
+                                                RaceService.instance.clearGlobalAlert(race.raceId);
+                                              });
                                             },
                                           );
                                         },
@@ -674,7 +716,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         subtitle: const Text("Enviar notificación push a todos"),
                                         onTap: () {
                                           Navigator.pop(context);
-                                          // TODO: Abrir otro dialog para escribir el aviso
+                                          _showCustomMessageDialog(context, race.raceId);
                                         },
                                       ),
                                     ],
@@ -747,6 +789,50 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               ),
             ),
           )
+        ],
+      ),
+    );
+  }
+  
+  void _showCustomMessageDialog(BuildContext context, String raceId) {
+    final TextEditingController _messageController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Anuncio Global"),
+        content: TextField(
+          controller: _messageController,
+          decoration: const InputDecoration(
+            hintText: "Escribe tu mensaje aquí...",
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+            onPressed: () async {
+              if (_messageController.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                await RaceService.instance.sendGlobalAlert(
+                  raceId, 
+                  'custom_message', 
+                  _messageController.text.trim(),
+                );
+                // Hide the message after 10 seconds
+                Future.delayed(const Duration(seconds: 10), () {
+                  RaceService.instance.clearGlobalAlert(raceId);
+                });
+              }
+            },
+            child: const Text("Enviar a Todos", style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );

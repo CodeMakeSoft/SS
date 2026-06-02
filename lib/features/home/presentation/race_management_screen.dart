@@ -96,13 +96,35 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
                     ),
                     onPressed: () async {
-                      if (bibController.text.trim().isEmpty) return;
+                      final bib = bibController.text.trim();
+                      if (bib.isEmpty) return;
                       
-                      await RaceService.instance.linkUserToRace(widget.race.raceId, scannedUid, bibController.text.trim());
-                      
-                      if (context.mounted) {
-                        Navigator.pop(context); 
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$runnerName vinculado (Dorsal #${bibController.text.trim()})'), backgroundColor: Colors.green));
+                      showDialog(
+                        context: context, barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+                      final nav = Navigator.of(context, rootNavigator: true);
+
+                      try {
+                        final isTaken = await RaceService.instance.isBibNumberTaken(widget.race.raceId, bib, excludeUserId: scannedUid);
+                        if (isTaken) {
+                          nav.pop();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Este dorsal ya está asignado a otro corredor'), backgroundColor: Colors.red));
+                          }
+                          return;
+                        }
+                        
+                        await RaceService.instance.linkUserToRace(widget.race.raceId, scannedUid, bib);
+                        nav.pop();
+                        
+                        if (context.mounted) {
+                          Navigator.pop(context); 
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$runnerName vinculado (Dorsal #$bib)'), backgroundColor: Colors.green));
+                        }
+                      } catch (e) {
+                        nav.pop();
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                       }
                     },
                     child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

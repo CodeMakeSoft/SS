@@ -57,6 +57,19 @@ class RaceService {
     });
   }
 
+  Future<bool> isBibNumberTaken(String raceId, String bibNumber, {String? excludeUserId}) async {
+    final query = await _firestore
+        .collection('users')
+        .where('activeRaceId', isEqualTo: raceId)
+        .where('activeBibNumber', isEqualTo: bibNumber)
+        .get();
+        
+    if (excludeUserId != null) {
+      return query.docs.any((doc) => doc.id != excludeUserId);
+    }
+    return query.docs.isNotEmpty;
+  }
+
   Future<void> linkUserToRace(String raceId, String userId, String bibNumber) async {
     final batch = _firestore.batch();
     

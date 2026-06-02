@@ -21,15 +21,16 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
     super.dispose();
   }
 
-  void _showDeleteConfirmation(BuildContext context, {
+  void _showDeleteConfirmation(BuildContext outerContext, {
     required String title,
     required String description,
     required VoidCallback onConfirm,
   }) {
-    final theme = Theme.of(context);
+    final theme = Theme.of(outerContext);
+    
     showDialog(
-      context: context,
-      builder: (context) {
+      context: outerContext,
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: theme.cardColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -37,12 +38,8 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
-                child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 36),
-              ),
-              const SizedBox(height: 20),
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
+              const SizedBox(height: 15),
               Text(title, textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
               const SizedBox(height: 10),
               Text(description, textAlign: TextAlign.center, style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 14)),
@@ -56,7 +53,7 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         side: BorderSide(color: theme.dividerColor),
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(dialogContext),
                       child: Text('Cancelar', style: TextStyle(color: theme.colorScheme.onSurface)),
                     ),
                   ),
@@ -64,13 +61,13 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: Colors.redAccent,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         elevation: 0,
                       ),
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.pop(dialogContext);
                         onConfirm();
                       },
                       child: const Text("Eliminar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -85,13 +82,13 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
     );
   }
 
-  void _showRunnerOptions(BuildContext context, String userId, String userName, String currentBib) {
+  void _showRunnerOptions(BuildContext outerContext, String userId, String userName, String currentBib) {
     final TextEditingController bibController = TextEditingController(text: currentBib);
-    final theme = Theme.of(context);
+    final theme = Theme.of(outerContext);
     
     showDialog(
-      context: context,
-      builder: (context) {
+      context: outerContext,
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: theme.cardColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -125,10 +122,31 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
                   ),
                   onPressed: () async {
-                    if (bibController.text.trim().isEmpty) return;
-                    Navigator.pop(context); 
-                    await RaceService.instance.linkUserToRace(widget.race.raceId, userId, bibController.text.trim());
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dorsal actualizado')));
+                    final bib = bibController.text.trim();
+                    if (bib.isEmpty) return;
+                    
+                    showDialog(
+                      context: outerContext, barrierDismissible: false,
+                      builder: (_) => const Center(child: CircularProgressIndicator()),
+                    );
+                    final nav = Navigator.of(outerContext, rootNavigator: true);
+                    
+                    try {
+                      final isTaken = await RaceService.instance.isBibNumberTaken(widget.race.raceId, bib, excludeUserId: userId);
+                      if (isTaken) {
+                        nav.pop();
+                        if (outerContext.mounted) ScaffoldMessenger.of(outerContext).showSnackBar(const SnackBar(content: Text('Error: Este dorsal ya está asignado a otro corredor'), backgroundColor: Colors.red));
+                        return;
+                      }
+                      
+                      await RaceService.instance.linkUserToRace(widget.race.raceId, userId, bib);
+                      nav.pop();
+                      if (outerContext.mounted) Navigator.pop(dialogContext); 
+                      if (outerContext.mounted) ScaffoldMessenger.of(outerContext).showSnackBar(const SnackBar(content: Text('Dorsal actualizado')));
+                    } catch (e) {
+                      nav.pop();
+                      if (outerContext.mounted) ScaffoldMessenger.of(outerContext).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                    }
                   },
                   child: const Text('Actualizar Dorsal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
@@ -141,14 +159,25 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
                   icon: const Icon(Icons.person_remove),
                   label: const Text('Eliminar de la carrera'),
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pop(dialogContext);
                     _showDeleteConfirmation(
-                      context, 
+                      outerContext, 
                       title: '¿Expulsar corredor?', 
                       description: 'Estás a punto de desvincular a $userName de la carrera. Se liberará su dorsal.', 
                       onConfirm: () async {
-                        await RaceService.instance.unlinkUserFromRace(widget.race.raceId, userId);
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Corredor desvinculado'), backgroundColor: Colors.red));
+                        showDialog(
+                          context: outerContext, barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+                        final nav = Navigator.of(outerContext, rootNavigator: true);
+                        try {
+                          await RaceService.instance.unlinkUserFromRace(widget.race.raceId, userId);
+                          nav.pop();
+                          if (outerContext.mounted) ScaffoldMessenger.of(outerContext).showSnackBar(const SnackBar(content: Text('Corredor desvinculado'), backgroundColor: Colors.red));
+                        } catch (e) {
+                          nav.pop();
+                          if (outerContext.mounted) ScaffoldMessenger.of(outerContext).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        }
                       }
                     );
                   },
@@ -157,7 +186,7 @@ class _RunnersListScreenState extends State<RunnersListScreen> {
             ],
           ),
         );
-      }
+      },
     );
   }
 

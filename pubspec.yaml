@@ -49,6 +49,7 @@ dependencies:
   provider: ^6.1.5+1
   intl: ^0.20.2
   mobile_scanner: ^7.2.0
+  widget_to_marker: ^1.0.6
 
 dev_dependencies:
   flutter_test:

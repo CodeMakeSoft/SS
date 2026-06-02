@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/run_state_provider.dart';
 import '../../profile/data/models/user_model.dart';
+import 'package:widget_to_marker/widget_to_marker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,20 +36,71 @@ class _HomeScreenState extends State<HomeScreen> {
   double _currentSpeed = 0.0;
   Set<Polyline> _polylines = {};
   bool _isTracking = false;
-
+  Set<Marker> _markers = {};
+  BitmapDescriptor? _customMarkerIcon;
+  String _activeRaceName = "CARRERA";
+  
   @override
   void initState() {
     super.initState();
+    _fetchInitialData();
+  }
+
+  Future<void> _fetchInitialData() async {
+    if (_customMarkerIcon == null) {
+      final String? myPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+      _customMarkerIcon = await const RunnerMarkerWidget(
+        photoUrl: null,
+      ).toBitmapDescriptor(
+        logicalSize: const Size(60, 60), 
+        imageSize: const Size(60, 60),
+      );
+      
+      RunnerMarkerWidget(photoUrl: myPhotoUrl).toBitmapDescriptor(
+        logicalSize: const Size(60, 60), 
+        imageSize: const Size(60, 60),
+      ).then((icon) => _customMarkerIcon = icon);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final user = Provider.of<UserProvider>(context, listen: false).userData;
+      if (user?.activeRaceId != null) {
+        final doc = await FirebaseFirestore.instance.collection('races').doc(user!.activeRaceId).get();
+        if (doc.exists && mounted) {
+          setState(() {
+            _activeRaceName = doc.data()?['name'] ?? "CARRERA";
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _updateMarker(LatLng point) async {
+    if (mounted) {
+      setState(() {
+        _markers = {
+          Marker(
+            markerId: const MarkerId('runner_me'),
+            position: point,
+            icon: _customMarkerIcon ?? BitmapDescriptor.defaultMarker,
+            anchor: const Offset(0.5, 0.5),
+          )
+        };
+      });
+    }
   }
 
   Future<void> _goToCurrentLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition();
+      final point = LatLng(position.latitude, position.longitude);
+      await _updateMarker(point);
+      
       final GoogleMapController controller = await _controller.future;
       controller.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
+            target: point,
             zoom: 20,
           ),
         ),
@@ -56,8 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _startTracking(bool isTrialUser, String? raceId) {
+  void _startTracking(bool isTrialUser, String? raceId) async {
     setState(() => _isTracking = true);
+      
     Provider.of<RunStateProvider>(
       context,
       listen: false,
@@ -74,14 +129,13 @@ class _HomeScreenState extends State<HomeScreen> {
             final newPoint = LatLng(position.latitude, position.longitude);
             if (_routePoints.isNotEmpty) {
               final lastPoint = _routePoints.last;
-              // Calculamos la distancia entre el último punto y este nuevo:
               final distanceChunk = Geolocator.distanceBetween(
                 lastPoint.latitude,
                 lastPoint.longitude,
                 position.latitude,
                 position.longitude,
               );
-              _totalDistanceMeters += distanceChunk; // Sumamos a nuestro total
+              _totalDistanceMeters += distanceChunk;
             }
             _currentSpeed = position.speed;
             Provider.of<RunStateProvider>(
@@ -99,17 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             setState(() {
               _routePoints.add(newPoint);
-              _polylines = {
-                Polyline(
-                  polylineId: const PolylineId('runner_route'),
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 6,
-                  points: _routePoints,
-                  jointType: JointType.round,
-                  endCap: Cap.roundCap,
-                ),
-              };
             });
+            await _updateMarker(newPoint);
+            
             final GoogleMapController controller = await _controller.future;
             controller.animateCamera(CameraUpdate.newLatLng(newPoint));
           },
@@ -141,14 +187,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      // No AppBar, using custom header
       body: Stack(
         children: [
-          // 1. MAP (Full Screen)
           GoogleMap(
-            mapType: MapType.normal, // Or hybrid/dark if Tech theme requires
+            mapType: MapType.normal,
             initialCameraPosition: _initialPosition,
-            myLocationEnabled: _locationPermissionGranted,
+            myLocationEnabled: false,
+            markers: _markers,
+            polylines: _polylines,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             onMapCreated: (GoogleMapController controller) {
@@ -157,10 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _goToCurrentLocation();
               }
             },
-            polylines: _polylines,
           ),
 
-          // 2. TECH GLASS HEADER
           Positioned(
             top: 50,
             left: 20,
@@ -168,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A).withOpacity(0.9), // Dark Tech
+                color: const Color(0xFF0F172A).withOpacity(0.9),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -197,9 +241,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "RASTREO ACTIVO",
-                        style: TextStyle(
+                      Text(
+                        hasActiveRace ? _activeRaceName.toUpperCase() : "ENTRENAMIENTO LIBRE",
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -214,13 +258,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'Courier', // Un toque de cuentakilómetros
+                          fontFamily: 'Courier', 
                         ),
                       ),
                     ],
                   ),
                   const Spacer(),
-                  // Optional: Simple compass or connection icon
                   Icon(
                     Icons.wifi,
                     color: Colors.white.withOpacity(0.5),
@@ -231,9 +274,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 3. custom FAB for location (Higher up to avoid BottomBar)
           Positioned(
-            bottom: 160, // Adjusted to clear the Custom Bottom Bar comfortably
+            bottom: 160, 
             right: 20,
             child: FloatingActionButton(
               onPressed: () {
@@ -250,9 +292,51 @@ class _HomeScreenState extends State<HomeScreen> {
               elevation: 4,
               child: Icon(
                 _isTracking ? Icons.stop : Icons.play_arrow,
-              ), // Círculo de poder
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class RunnerMarkerWidget extends StatelessWidget {
+  final String? photoUrl;
+  const RunnerMarkerWidget({super.key, this.photoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 60,
+      height: 60,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(color: Colors.black38, blurRadius: 4, offset: const Offset(0, 2))
+              ],
+            ),
+          ),
+          if (photoUrl != null && photoUrl!.isNotEmpty)
+            ClipOval(
+              child: Image.network(
+                photoUrl!,
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 30, color: Colors.white),
+              ),
+            )
+          else
+            const Icon(Icons.directions_run, size: 30, color: Colors.white),
         ],
       ),
     );

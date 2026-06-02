@@ -15,6 +15,8 @@ class RaceModel {
   final List<String> participants;
   
   final List<GeoPoint> route;
+  
+  final List<Map<String, dynamic>> finishers;
 
   // Global Alerts
   final String? alertType; // e.g. 'countdown_start', 'countdown_finish', 'paused', 'info'
@@ -35,6 +37,7 @@ class RaceModel {
     this.endTime,
     this.participants = const [],
     this.route = const [], 
+    this.finishers = const [],
     this.alertType,
     this.alertMessage,
     this.alertTargetTime,
@@ -55,6 +58,7 @@ class RaceModel {
       endTime: (data['endTime'] as Timestamp?)?.toDate(),
       participants: List<String>.from(data['participants'] ?? []),
       route: List<GeoPoint>.from(data['route'] ?? []), 
+      finishers: List<Map<String, dynamic>>.from(data['finishers'] ?? []),
       alertType: data['alertType'],
       alertMessage: data['alertMessage'],
       alertTargetTime: (data['alertTargetTime'] as Timestamp?)?.toDate(),
@@ -75,6 +79,7 @@ class RaceModel {
       'endTime': endTime,
       'participants': participants,
       'route': route, 
+      'finishers': finishers,
       'alertType': alertType,
       'alertMessage': alertMessage,
       'alertTargetTime': alertTargetTime,

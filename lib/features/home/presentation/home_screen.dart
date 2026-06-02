@@ -48,6 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _globalAlertMessage;
   DateTime? _globalAlertTargetTime;
   String? _currentRaceId;
+  
+  // Race Progress State
+  List<LatLng> _activeRaceRoute = [];
+  bool _isFinished = false;
+  bool _isDisqualified = false;
+  DateTime? _activeRaceStartTime;
   StreamSubscription<DocumentSnapshot>? _raceDataSubscription;
   StreamSubscription<QuerySnapshot>? _liveLocationsSubscription;
   final Map<String, BitmapDescriptor> _otherUsersMarkersIcons = {};
@@ -83,6 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _activeRaceName = race.name;
           _activeRaceStatus = race.status;
+          _activeRaceRoute = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+          _activeRaceStartTime = race.startTime;
           
           final previousAlert = _globalAlertType;
           
@@ -299,6 +307,54 @@ class _HomeScreenState extends State<HomeScreen> {
             if(raceId != null) {
               debugPrint("DEBUG Runner Map: Sincronizando ubicación en movimiento...");
               LocationSyncService.instance.syncLocations(raceId);
+              
+              if (_activeRaceStatus == 'ongoing' && _activeRaceRoute.isNotEmpty && !_isFinished && !_isDisqualified) {
+                final endPoint = _activeRaceRoute.last;
+                final distanceToFinish = Geolocator.distanceBetween(
+                  position.latitude, position.longitude, endPoint.latitude, endPoint.longitude
+                );
+                
+                if (distanceToFinish < 10) {
+                   _isFinished = true;
+                   _stopTracking();
+                   
+                   final myUid = FirebaseAuth.instance.currentUser?.uid;
+                   final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
+                   final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
+                   int timeInSecs = 0;
+                   if (_activeRaceStartTime != null) {
+                      timeInSecs = DateTime.now().difference(_activeRaceStartTime!).inSeconds;
+                   }
+                   
+                   if (myUid != null) {
+                     await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, timeInSecs, false);
+                     await LocalDatabase.instance.saveRaceHistory(raceId, _activeRaceName, timeInSecs, false);
+                   }
+                   if (mounted) {
+                     _showRaceFinishedDialog(false, timeInSecs);
+                   }
+                } else {
+                   double minDistance = double.infinity;
+                   for (var rp in _activeRaceRoute) {
+                     final d = Geolocator.distanceBetween(position.latitude, position.longitude, rp.latitude, rp.longitude);
+                     if (d < minDistance) minDistance = d;
+                   }
+                   if (minDistance > 200) { // Off route by 200 meters
+                      _isDisqualified = true;
+                      _stopTracking();
+                      final myUid = FirebaseAuth.instance.currentUser?.uid;
+                      final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
+                      final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
+                      if (myUid != null) {
+                        await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true);
+                        await LocalDatabase.instance.saveRaceHistory(raceId, _activeRaceName, 0, true);
+                      }
+                      if (mounted) {
+                        _showRaceFinishedDialog(true, 0);
+                      }
+                   }
+                }
+              }
             }
 
             if (!mounted) return;
@@ -432,11 +488,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        _isTracking
-                            ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h"
-                            : "Señal GPS Estable",
+                        _getRaceStatusText(hasActiveRace),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: _isDisqualified ? Colors.redAccent : (_isFinished ? Colors.amber : Colors.white.withOpacity(0.8)),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Courier', 
@@ -627,6 +681,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showRaceFinishedDialog(bool disqualified, int timeInSecs) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(disqualified ? Icons.cancel : Icons.emoji_events, 
+                 color: disqualified ? Colors.red : Colors.amber, size: 30),
+            const SizedBox(width: 10),
+            Expanded(child: Text(disqualified ? "Descalificado" : "¡Meta Alcanzada!")),
+          ],
+        ),
+        content: Text(
+          disqualified 
+            ? "Te has desviado demasiado de la ruta oficial y has sido descalificado de la carrera." 
+            : "¡Felicidades! Has cruzado la meta. Tu tiempo ha sido registrado.\nTiempo: ${timeInSecs ~/ 60}m ${timeInSecs % 60}s",
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _isFinished = true;
+                _isTracking = false;
+              });
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+            child: const Text("Entendido", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLeaveRaceDialog(String raceId) {
     showDialog(
       context: context,
@@ -738,6 +828,24 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+  }
+
+  String _getRaceStatusText(bool hasActiveRace) {
+    if (!hasActiveRace) {
+       return _isTracking ? "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h" : "Señal GPS Estable";
+    }
+    
+    if (_isDisqualified) return "DESCALIFICADO";
+    if (_isFinished) return "META ALCANZADA";
+    
+    if (_activeRaceStatus == 'upcoming') return "ESPERANDO INICIO...";
+    if (_activeRaceStatus == 'paused') return "CARRERA PAUSADA";
+    if (_activeRaceStatus == 'finished') return "CARRERA FINALIZADA";
+    
+    if (_isTracking) {
+      return "${(_totalDistanceMeters / 1000).toStringAsFixed(2)} km  |  ${(_currentSpeed * 3.6).toStringAsFixed(1)} km/h";
+    }
+    return "CARRERA EN CURSO";
   }
 }
 

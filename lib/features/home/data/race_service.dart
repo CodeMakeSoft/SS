@@ -127,4 +127,19 @@ class RaceService {
       'alertTargetTime': FieldValue.delete(),
     });
   }
+
+  Future<void> submitRaceResult(String raceId, String userId, String displayName, String photoUrl, int timeInSeconds, bool isDisqualified) async {
+    final result = {
+      'userId': userId,
+      'displayName': displayName,
+      'photoUrl': photoUrl,
+      'timeInSeconds': timeInSeconds,
+      'isDisqualified': isDisqualified,
+      'completedAt': FieldValue.serverTimestamp(),
+    };
+    
+    await _firestore.collection('races').doc(raceId).update({
+      'finishers': FieldValue.arrayUnion([result]),
+    });
+  }
 }

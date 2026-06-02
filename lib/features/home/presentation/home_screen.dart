@@ -88,17 +88,44 @@ class _HomeScreenState extends State<HomeScreen> {
         final race = RaceModel.fromMap(doc.data()!, doc.id);
         setState(() {
           _activeRaceName = race.name;
+          
+          final previousStatus = _activeRaceStatus;
           _activeRaceStatus = race.status;
           _activeRaceRoute = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
           _activeRaceStartTime = race.startTime;
           
+          // --- Notificación de Cambio de Estado ---
+          if (previousStatus != null && previousStatus != _activeRaceStatus) {
+            String title = "Estado de Carrera";
+            String body = "El estado ha cambiado a $_activeRaceStatus";
+            
+            if (_activeRaceStatus == 'ongoing') {
+               title = "¡Carrera Iniciada!";
+               body = "La carrera ha comenzado. ¡Buena suerte!";
+            } else if (_activeRaceStatus == 'paused') {
+               title = "Carrera Pausada";
+               body = "El organizador ha pausado la carrera temporalmente.";
+            } else if (_activeRaceStatus == 'finished') {
+               title = "Carrera Finalizada";
+               body = "El organizador ha dado por terminada la carrera.";
+            }
+
+            NotificationService.instance.showNotification(
+              id: 1, // Usar un ID distinto a los avisos para que no se sobreescriban
+              title: title,
+              body: body,
+            );
+          }
+          
+          // --- Notificación de Anuncios ---
           final previousAlert = _globalAlertType;
+          final previousAlertMsg = _globalAlertMessage;
           
           _globalAlertType = race.alertType;
           _globalAlertMessage = race.alertMessage;
           _globalAlertTargetTime = race.alertTargetTime;
           
-          if (_globalAlertType != null && _globalAlertType != previousAlert) {
+          if (_globalAlertType != null && (_globalAlertType != previousAlert || _globalAlertMessage != previousAlertMsg)) {
             NotificationService.instance.showNotification(
               id: 0,
               title: "Aviso de Carrera",

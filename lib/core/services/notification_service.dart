@@ -16,7 +16,7 @@ class NotificationService {
 
     await Permission.notification.request();
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('launcher_icon');
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/launcher_icon');
     
     // Setting for iOS can be added here if needed
     const InitializationSettings initializationSettings = InitializationSettings(

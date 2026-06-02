@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../home/providers/user_provider.dart';
 import '../../home/providers/theme_provider.dart';
 import '../../auth/domain/user_roles.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +17,45 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
+  bool _notificationsEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNotificationPermission();
+  }
+
+  Future<void> _checkNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = status.isGranted;
+      });
+    }
+  }
+
+  Future<void> _toggleNotificationPermission(bool value) async {
+    if (value) {
+      final status = await Permission.notification.request();
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = status.isGranted;
+        });
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Debes habilitar las notificaciones desde los ajustes de tu sistema.')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Para desactivar las notificaciones, ve a los ajustes de tu teléfono.')),
+        );
+        openAppSettings();
+      }
+    }
+  }
 
   Future<void> _handleLinkGoogle() async {
     setState(() => _isLoading = true);
@@ -505,16 +545,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.dark ? Colors.white10 : Colors.grey[100],
+                          color: Colors.indigoAccent.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.notifications_outlined,
-                          color: theme.brightness == Brightness.dark ? Colors.white70 : Colors.black87,
+                          color: Colors.indigoAccent,
                         ),
                       ),
                       title: const Text('Notificaciones'),
-                      trailing: Switch(value: true, onChanged: (v) {}),
+                      trailing: Switch(
+                        value: _notificationsEnabled, 
+                        onChanged: _toggleNotificationPermission,
+                        activeColor: Colors.indigoAccent,
+                      ),
                     ),
                     const Divider(height: 1),
                     // MODO OSCURO TOGGLE

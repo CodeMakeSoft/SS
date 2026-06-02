@@ -9,7 +9,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'route_designer_screen.dart';
 
 class CreateRaceScreen extends StatefulWidget {
-  const CreateRaceScreen({super.key});
+  final RaceModel? raceToEdit;
+  const CreateRaceScreen({super.key, this.raceToEdit});
 
   @override
   State<CreateRaceScreen> createState() => _CreateRaceScreenState();
@@ -26,6 +27,19 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
   List<String> _tags = [];
   bool _isLoading = false;
   List<LatLng> _routePoints = [];
+
+  void initState() {
+    super.initState();
+    if (widget.raceToEdit != null) {
+      final race = widget.raceToEdit!;
+      _nameController.text = race.name;
+      _descriptionController.text = race.description ?? '';
+      _durationController.text = race.estimatedDuration ?? '';
+      _selectedDate = race.date;
+      _tags = List.from(race.tags);
+      _routePoints = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    }
+  }
 
   void _addTag() {
     if (_tags.length >= 10) {
@@ -143,19 +157,24 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
       final user = FirebaseAuthService().currentUser;
       if (user == null) throw Exception("No hay usuario autenticado");
 
-            final newRace = RaceModel(
-        raceId: "race_${DateTime.now().millisecondsSinceEpoch}",
+      final isEditing = widget.raceToEdit != null;
+      final raceId = isEditing ? widget.raceToEdit!.raceId : "race_${DateTime.now().millisecondsSinceEpoch}";
+      final newRace = RaceModel(
+        raceId: raceId,
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
-        status: 'upcoming',
+        status: isEditing ? widget.raceToEdit!.status : 'upcoming',
         date: _selectedDate,
         creatorUid: user.uid,
         tags: _tags,
         estimatedDuration: _durationController.text.trim(),
         route: _routePoints.map((p) => GeoPoint(p.latitude, p.longitude)).toList(),
       );
-
-      await RaceService.instance.createRace(newRace);
+      if (isEditing) {
+        await RaceService.instance.updateRace(newRace); 
+      } else {
+        await RaceService.instance.createRace(newRace);
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -176,7 +195,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -185,7 +204,10 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
       resizeToAvoidBottomInset: false,
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Configurar Evento', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          widget.raceToEdit == null ? 'Configurar Evento' : 'Editar Evento', 
+          style: const TextStyle(fontWeight: FontWeight.bold)
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: const Color(0xFF0F172A),
@@ -364,9 +386,9 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
             elevation: 8,
             shadowColor: const Color(0xFF0D47A1).withOpacity(0.4),
           ),
-          child: const Text(
-            'LANZAR EVENTO',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: Text(
+            widget.raceToEdit == null ? 'LANZAR EVENTO' : 'GUARDAR CAMBIOS',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
           ),
         ),
       ),

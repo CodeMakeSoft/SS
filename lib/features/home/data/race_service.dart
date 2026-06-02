@@ -12,15 +12,32 @@ class RaceService {
     await _firestore.collection('races').doc(race.raceId).set(race.toMap());
   }
 
-  Stream<List<RaceModel>> getActiveRaces() {
+  Future<void> updateRace(RaceModel race) async {
+    await _firestore.collection('races').doc(race.raceId).update(race.toMap());
+  }
+
+    Stream<List<RaceModel>> getActiveRaces() {
     return _firestore
         .collection('races')
         .where('status', whereIn: ['upcoming', 'ongoing'])
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => RaceModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final now = DateTime.now();
+          List<RaceModel> activeRaces = [];
+
+          for (var doc in snapshot.docs) {
+            final race = RaceModel.fromMap(doc.data(), doc.id);
+            if (race.date.add(const Duration(hours: 24)).isBefore(now)) {
+              updateRaceStatus(race.raceId, 'finished');              
+            } else {
+              activeRaces.add(race);
+            }
+          }
+          
+          return activeRaces;
+        });
   }
+
 
   Stream<List<RaceModel>> getRaceHistory() {
     return _firestore

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smartsync/features/home/presentation/create_race_screen.dart';
 import '../data/models/race_model.dart';
 import '../data/race_service.dart';
 import 'runners_list_screen.dart';
@@ -356,6 +357,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           padding: EdgeInsets.symmetric(horizontal: 20),
                                           child: Divider(),
                                         ),
+                                        if (widget.race.status != 'finished')
                                         ListTile(
                                           leading: Container(
                                             padding: const EdgeInsets.all(8),
@@ -366,6 +368,12 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           subtitle: const Text("Editar detalles"),
                                           onTap: () {
                                             Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => CreateRaceScreen(raceToEdit: widget.race),
+                                              ),
+                                            );
                                           },
                                         ),
                                       ],

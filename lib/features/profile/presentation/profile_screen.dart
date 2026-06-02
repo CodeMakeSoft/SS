@@ -558,7 +558,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextStyle(color: Colors.red),
                       ),
                       onTap: () async {
+                        showDialog(
+                          context: context, barrierDismissible: false,
+                          builder: (context) => const Center(child: CircularProgressIndicator()),
+                        );
                         await FirebaseAuthService().signOut();
+                        if (context.mounted) Navigator.pop(context);
                       },
                     ),
                   ],

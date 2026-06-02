@@ -56,20 +56,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _handleLogin(Future<User?> Function() loginMethod) async {
-    setState(() => _isLoading = true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
     try {
       final user = await loginMethod();
       if (user != null && mounted) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Bienvenido!')),
         );
       }
     } on AuthLinkingException catch (e){
       if(mounted) {
+        Navigator.pop(context);
         _showLinkingDialog(e);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
+        Navigator.pop(context);
         String message = 'Error de autenticación';
         if (e.code == 'user-not-allowed') {
           message = e.message ?? 'Usuario no permitido';
@@ -89,12 +96,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -133,7 +139,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   // Ejecuta la vinculación real
   Future<void> _performLinking(AuthLinkingException e) async {
-    setState(() => _isLoading = true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
     stderr.writeln("DEBUG: _performLinking iniciado - stderr");
     try {
       // 1. Iniciamos sesión con el proveedor original (Google)
@@ -160,13 +170,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         //    (Evitamos race condition al cambiar de pantalla)
         FirebaseAuthService.pendingLinkingCredential = credentialToLink;
         stderr.writeln("DEBUG: Credencial guardada en pendingLinkingCredential. Redirigiendo...");
+        if (mounted) Navigator.pop(context);
         
         // El StreamBuilder en main.dart detectará el cambio de usuario y navegará.
       }
     } catch (error) {
       stderr.writeln("DEBUG: Excepción general en _performLinking: $error");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -308,9 +318,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               
                               const SizedBox(height: 16),
                               
-                              if (_isLoading)
-                                Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
-                              else
                                 ElevatedButton(
                                   onPressed: _onEmailLoginPressed,
                                   style: ElevatedButton.styleFrom(

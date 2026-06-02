@@ -283,8 +283,14 @@ class _HomeScreenState extends State<HomeScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_currentRaceId != null) {
           _fetchActiveRaceData(_currentRaceId!);
+          if (!_isTracking) {
+             _startTracking(isTrial, _currentRaceId);
+          }
         } else {
           if (mounted) {
+            if (_isTracking) {
+               _stopTracking();
+            }
             setState(() {
               _activeRaceName = "CARRERA OFICIAL";
               _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');

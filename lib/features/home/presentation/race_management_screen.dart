@@ -204,6 +204,20 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('races').doc(widget.race.raceId).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        
+        final currentRace = RaceModel.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
+        return _buildContent(context, currentRace);
+      }
+    );
+  }
+
+  Widget _buildContent(BuildContext context, RaceModel race) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -214,8 +228,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: CameraPosition(
-              target: widget.race.route.isNotEmpty 
-                  ? LatLng(widget.race.route.first.latitude, widget.race.route.first.longitude)
+              target: race.route.isNotEmpty 
+                  ? LatLng(race.route.first.latitude, race.route.first.longitude)
                   : const LatLng(19.4326, -99.1332),
               zoom: 15,
             ),
@@ -226,10 +240,10 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             mapType: MapType.normal,
             
             polylines: {
-              if (widget.race.route.isNotEmpty)
+              if (race.route.isNotEmpty)
                 Polyline(
                   polylineId: const PolylineId('race_route'),
-                  points: widget.race.route.map((p) => LatLng(p.latitude, p.longitude)).toList(),
+                  points: race.route.map((p) => LatLng(p.latitude, p.longitude)).toList(),
                   color: Colors.blueAccent,
                   width: 5,
                   jointType: JointType.round,
@@ -237,17 +251,17 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             },
             
             markers: {
-              if (widget.race.route.isNotEmpty)
+              if (race.route.isNotEmpty)
                 Marker(
                   markerId: const MarkerId('start'),
-                  position: LatLng(widget.race.route.first.latitude, widget.race.route.first.longitude),
+                  position: LatLng(race.route.first.latitude, race.route.first.longitude),
                   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
                   infoWindow: const InfoWindow(title: 'Punto de Partida'),
                 ),
-              if (widget.race.route.length > 1)
+              if (race.route.length > 1)
                 Marker(
                   markerId: const MarkerId('end'),
-                  position: LatLng(widget.race.route.last.latitude, widget.race.route.last.longitude),
+                  position: LatLng(race.route.last.latitude, race.route.last.longitude),
                   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
                   infoWindow: const InfoWindow(title: 'Meta'),
                 ),
@@ -288,7 +302,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            widget.race.name.toUpperCase(),
+                            race.name.toUpperCase(),
                             style: TextStyle(
                               color: theme.colorScheme.onSurface, 
                               fontWeight: FontWeight.bold, 
@@ -348,7 +362,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => RunnersListScreen(race: widget.race),
+                                                builder: (context) => RunnersListScreen(race: race),
                                               ),
                                             );
                                           },
@@ -357,7 +371,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           padding: EdgeInsets.symmetric(horizontal: 20),
                                           child: Divider(),
                                         ),
-                                        if (widget.race.status != 'finished')
+                                        if (race.status != 'finished')
                                         ListTile(
                                           leading: Container(
                                             padding: const EdgeInsets.all(8),
@@ -371,7 +385,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => CreateRaceScreen(raceToEdit: widget.race),
+                                                builder: (context) => CreateRaceScreen(raceToEdit: race),
                                               ),
                                             );
                                           },
@@ -432,7 +446,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(widget.race.status.toUpperCase(), 
+                      Text(race.status.toUpperCase(), 
                         style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10)),
                       Text("GESTIÓN EN VIVO", 
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),

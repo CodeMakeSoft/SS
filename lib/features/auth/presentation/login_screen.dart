@@ -61,22 +61,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+    final navigator = Navigator.of(context, rootNavigator: true);
     try {
       final user = await loginMethod();
+      navigator.pop();
       if (user != null && mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Bienvenido!')),
         );
       }
     } on AuthLinkingException catch (e){
+      navigator.pop();
       if(mounted) {
-        Navigator.pop(context);
         _showLinkingDialog(e);
       }
     } on FirebaseAuthException catch (e) {
+      navigator.pop();
       if (mounted) {
-        Navigator.pop(context);
         String message = 'Error de autenticación';
         if (e.code == 'user-not-allowed') {
           message = e.message ?? 'Usuario no permitido';
@@ -95,8 +96,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         );
       }
     } catch (e) {
+      navigator.pop();
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -144,6 +145,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+    final navigator = Navigator.of(context, rootNavigator: true);
     stderr.writeln("DEBUG: _performLinking iniciado - stderr");
     try {
       // 1. Iniciamos sesión con el proveedor original (Google)
@@ -170,13 +172,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         //    (Evitamos race condition al cambiar de pantalla)
         FirebaseAuthService.pendingLinkingCredential = credentialToLink;
         stderr.writeln("DEBUG: Credencial guardada en pendingLinkingCredential. Redirigiendo...");
-        if (mounted) Navigator.pop(context);
         
         // El StreamBuilder en main.dart detectará el cambio de usuario y navegará.
       }
     } catch (error) {
       stderr.writeln("DEBUG: Excepción general en _performLinking: $error");
-      if (mounted) Navigator.pop(context);
+    } finally {
+      navigator.pop();
     }
   }
 

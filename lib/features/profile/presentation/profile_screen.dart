@@ -562,8 +562,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           context: context, barrierDismissible: false,
                           builder: (context) => const Center(child: CircularProgressIndicator()),
                         );
-                        await FirebaseAuthService().signOut();
-                        if (context.mounted) Navigator.pop(context);
+                        final navigator = Navigator.of(context, rootNavigator: true);
+                        try {
+                          await FirebaseAuthService().signOut();
+                        } finally {
+                          navigator.pop();
+                        }
                       },
                     ),
                   ],

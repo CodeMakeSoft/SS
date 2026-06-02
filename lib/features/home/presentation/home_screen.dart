@@ -7,10 +7,10 @@ import '../data/local_database.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/run_state_provider.dart';
-import '../../profile/data/models/user_model.dart';
 import 'package:widget_to_marker/widget_to_marker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../data/models/race_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,25 +67,61 @@ class _HomeScreenState extends State<HomeScreen> {
       if (user?.activeRaceId != null) {
         final doc = await FirebaseFirestore.instance.collection('races').doc(user!.activeRaceId).get();
         if (doc.exists && mounted) {
+          final race = RaceModel.fromMap(doc.data()!, doc.id);
           setState(() {
-            _activeRaceName = doc.data()?['name'] ?? "CARRERA";
+            _activeRaceName = race.name;
           });
+          _drawRaceRoute(race);
         }
       }
+    });
+  }
+
+  void _drawRaceRoute(RaceModel race) {
+    if (race.route.isEmpty) return;
+
+    final List<LatLng> racePoints = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+
+    final Polyline predefinedRoute = Polyline(
+      polylineId: const PolylineId('official_race_route'),
+      points: racePoints,
+      color: Colors.orangeAccent.withOpacity(0.8),
+      width: 6,
+      patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+    );
+
+    final Marker startCheckpoint = Marker(
+      markerId: const MarkerId('start_checkpoint'),
+      position: racePoints.first,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      infoWindow: const InfoWindow(title: '🏁 Salida'),
+    );
+
+    final Marker endCheckpoint = Marker(
+      markerId: const MarkerId('end_checkpoint'),
+      position: racePoints.last,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      infoWindow: const InfoWindow(title: '🏆 Meta'),
+    );
+
+    setState(() {
+      _polylines.add(predefinedRoute);
+      _markers.addAll([startCheckpoint, endCheckpoint]);
     });
   }
 
   Future<void> _updateMarker(LatLng point) async {
     if (mounted) {
       setState(() {
-        _markers = {
+        _markers.removeWhere((m) => m.markerId.value == 'runner_me');
+        _markers.add(
           Marker(
             markerId: const MarkerId('runner_me'),
             position: point,
             icon: _customMarkerIcon ?? BitmapDescriptor.defaultMarker,
             anchor: const Offset(0.5, 0.5),
           )
-        };
+        );
       });
     }
   }

@@ -320,6 +320,15 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    double distanceTotalMeters = 0;
+    for (int i = 0; i < race.route.length - 1; i++) {
+      final p1 = race.route[i];
+      final p2 = race.route[i + 1];
+      distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+    }
+    int distanceKm = (distanceTotalMeters / 1000).ceil();
+    String raceDistanceLabel = "$distanceKm KM";
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -402,7 +411,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            race.name.toUpperCase(),
+                            "${race.name.toUpperCase()} - $raceDistanceLabel",
                             style: TextStyle(
                               color: theme.colorScheme.onSurface, 
                               fontWeight: FontWeight.bold, 

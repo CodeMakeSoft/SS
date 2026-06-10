@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../data/race_service.dart';
 import '../data/models/race_model.dart';
 import 'race_management_screen.dart';
+import 'package:geolocator/geolocator.dart';
 
 class AdminRacesScreen extends StatefulWidget {
   const AdminRacesScreen({super.key});
@@ -12,8 +13,7 @@ class AdminRacesScreen extends StatefulWidget {
   State<AdminRacesScreen> createState() => _AdminRacesScreenState();
 }
 
-class _AdminRacesScreenState extends State<AdminRacesScreen> {
-  
+class _AdminRacesScreenState extends State<AdminRacesScreen> { 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -26,7 +26,6 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // CABECERA ESTANDARIZADA
             Padding(
               padding: const EdgeInsets.fromLTRB(25, 35, 25, 20),
               child: Column(
@@ -120,7 +119,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
           child: Icon(Icons.directions_run, color: theme.colorScheme.primary),
         ),
         title: Text(
-          race.name,
+          "${race.name} - ${_getRaceDistanceLabel(race)}",
           style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         subtitle: Text(
@@ -178,7 +177,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
             ),
             const SizedBox(height: 15),
             Text(
-              race.name,
+              "${race.name} - ${_getRaceDistanceLabel(race)}",
               style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 32, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
@@ -214,5 +213,16 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
         Text(label, style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 11)),
       ],
     );
+  }
+
+    String _getRaceDistanceLabel(RaceModel race) {
+    double distanceTotalMeters = 0;
+    for (int i = 0; i < race.route.length - 1; i++) {
+      final p1 = race.route[i];
+      final p2 = race.route[i + 1];
+      distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+    }
+    int distanceKm = (distanceTotalMeters / 1000).ceil();
+    return "$distanceKm KM";
   }
 }

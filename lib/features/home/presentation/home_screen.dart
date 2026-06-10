@@ -95,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _activeRaceRoute = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
           _activeRaceStartTime = race.startTime;
           
-          // --- Notificación de Cambio de Estado ---
           if (previousStatus != null && previousStatus != _activeRaceStatus) {
             String title = "Estado de Carrera";
             String body = "El estado ha cambiado a $_activeRaceStatus";
@@ -112,13 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             NotificationService.instance.showNotification(
-              id: 1, // Usar un ID distinto a los avisos para que no se sobreescriban
+              id: 1,
               title: title,
               body: body,
             );
           }
-          
-          // --- Notificación de Anuncios ---
+
           final previousAlert = _globalAlertType;
           final previousAlertMsg = _globalAlertMessage;
           
@@ -145,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         _drawRaceRoute(race);
         
-        // --- RACE FINISHED EVENT ---
         if (race.status == 'finished') {
            _stopTracking();
            
@@ -183,7 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
                }
            }
            
-           // Clear active race to return to free training mode
            final myUid = FirebaseAuth.instance.currentUser?.uid;
            if (myUid != null) {
               FirebaseFirestore.instance.collection('users').doc(myUid).update({
@@ -358,9 +354,15 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint("Error obteniendo ubicacion inicial: $e");
     }
 
-    const LocationSettings locationSettings = LocationSettings(
+    final locationSettings = AndroidSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 1,
+      distanceFilter: 0,
+      intervalDuration: const Duration(seconds: 1),
+      foregroundNotificationConfig: const ForegroundNotificationConfig(
+        notificationText: "SmartSync está registrando tu ruta en segundo plano",
+        notificationTitle: "Carrera Activa",
+        enableWakeLock: true, 
+      ),
     );
 
     _positionStreamSubscription =

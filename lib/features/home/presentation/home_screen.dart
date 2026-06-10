@@ -42,8 +42,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<Marker> _markers = {};
   BitmapDescriptor? _customMarkerIcon;
   String _activeRaceName = "Sin carrera activa";
+  String _raceDistanceLabel = "";
   String _activeRaceStatus = "upcoming";
-  
+  Timer? _syncTimer;
+  bool _isSprintMode = false;
+  int _outOfRouteWarnings = 0;
+
   // Global Alert State
   String? _globalAlertType;
   String? _globalAlertMessage;
@@ -93,6 +97,16 @@ class _HomeScreenState extends State<HomeScreen> {
           final previousStatus = _activeRaceStatus;
           _activeRaceStatus = race.status;
           _activeRaceRoute = race.route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+          
+          double distanceTotalMeters = 0;
+          for (int i = 0; i < _activeRaceRoute.length - 1; i++) {
+            final p1 = _activeRaceRoute[i];
+            final p2 = _activeRaceRoute[i + 1];
+            distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+          }
+          double distanceKm = double.parse((distanceTotalMeters / 1000).toStringAsFixed(1));
+          _raceDistanceLabel = "$distanceKm KM";
+
           _activeRaceStartTime = race.startTime;
           
           if (previousStatus != null && previousStatus != _activeRaceStatus) {
@@ -326,7 +340,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startTracking(bool isTrialUser, String? raceId) async {
+    _outOfRouteWarnings = 0;
     setState(() => _isTracking = true);
+    _isSprintMode = false;
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 10), (timer) {  //TODO: Seconds to update location
+      if (raceId != null) {
+        debugPrint("DEBUG Runner Map: Sincronización en lote a Firebase...");
+        LocationSyncService.instance.syncLocations(raceId);
+      }
+    });
       
     Provider.of<RunStateProvider>(
       context,
@@ -361,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
       foregroundNotificationConfig: const ForegroundNotificationConfig(
         notificationText: "SmartSync está registrando tu ruta en segundo plano",
         notificationTitle: "Carrera Activa",
-        enableWakeLock: true, 
+        enableWakeLock: true,
       ),
     );
 
@@ -389,9 +412,6 @@ class _HomeScreenState extends State<HomeScreen> {
               position.speed,
             );
             if(raceId != null) {
-              debugPrint("DEBUG Runner Map: Sincronizando ubicación en movimiento...");
-              LocationSyncService.instance.syncLocations(raceId);
-              
               if (_activeRaceStatus == 'ongoing' && _activeRaceRoute.isNotEmpty && !_isFinished && !_isDisqualified) {
                 final endPoint = _activeRaceRoute.last;
                 final distanceToFinish = Geolocator.distanceBetween(
@@ -434,40 +454,61 @@ class _HomeScreenState extends State<HomeScreen> {
                      _showRaceFinishedDialog(false, timeInSecs);
                    }
                 } else {
-                   double minDistance = double.infinity;
-                   for (var rp in _activeRaceRoute) {
-                     final d = Geolocator.distanceBetween(position.latitude, position.longitude, rp.latitude, rp.longitude);
-                     if (d < minDistance) minDistance = d;
-                   }
-                   if (minDistance > 200) { // Off route by 200 meters
-                      _isDisqualified = true;
-                      _stopTracking();
-                      final myUid = FirebaseAuth.instance.currentUser?.uid;
-                      final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
-                      final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
-                      if (myUid != null) {
-                        await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true);
+                  if (distanceToFinish <= 50 && !_isSprintMode) {
+                    _isSprintMode = true;
+                    _syncTimer?.cancel();
+                    _syncTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+                        if (raceId != null) LocationSyncService.instance.syncLocations(raceId);
+                    });
+                    debugPrint("¡MODO SPRINT! Sincronizando cada 1 segundo.");
+                  }
+                  double minDistance = double.infinity;
+                  for (var rp in _activeRaceRoute) {
+                    final d = Geolocator.distanceBetween(position.latitude, position.longitude, rp.latitude, rp.longitude);
+                    if (d < minDistance) minDistance = d;
+                  }
+                  
+                  if (minDistance > 200) { 
+                    _outOfRouteWarnings++;
+                    debugPrint("Falta de desvío de ruta: $_outOfRouteWarnings / 5");
+                    
+                    if (_outOfRouteWarnings >= 5) {
+                        _isDisqualified = true;
+                        _stopTracking();
+                        final myUid = FirebaseAuth.instance.currentUser?.uid;
+                        final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
+                        final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
                         
-                        final userProv = Provider.of<UserProvider>(context, listen: false);
-                        final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                        if (myUid != null) {
+                          await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true);
+                          
+                          final userProv = Provider.of<UserProvider>(context, listen: false);
+                          final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                          
+                          String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
+                          
+                          await LocalDatabase.instance.saveRaceHistory(
+                            raceId, 
+                            _activeRaceName, 
+                            0, 
+                            true,
+                            bibNumber: userProv.userData?.activeBibNumber ?? 'N/A',
+                            distanceFormatted: runProv.distanceFormatted,
+                            organizerName: 'Organizador Oficial',
+                            routeJson: routeJson,
+                          );
+                        }
                         
-                        String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
-                        
-                        await LocalDatabase.instance.saveRaceHistory(
-                          raceId, 
-                          _activeRaceName, 
-                          0, 
-                          true,
-                          bibNumber: userProv.userData?.activeBibNumber ?? 'N/A',
-                          distanceFormatted: runProv.distanceFormatted,
-                          organizerName: 'Organizador Oficial',
-                          routeJson: routeJson,
-                        );
-                      }
-                      if (mounted) {
-                        _showRaceFinishedDialog(true, 0);
-                      }
-                   }
+                        if (mounted) {
+                          _showRaceFinishedDialog(true, 0);
+                        }
+                    }
+                  } else {
+                    if (_outOfRouteWarnings > 0) {
+                        _outOfRouteWarnings = 0;
+                        debugPrint("Corredor regresó a la ruta. Faltas perdonadas.");
+                    }
+                  }
                 }
               }
             }
@@ -492,6 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
       listen: false,
     ).setTrackingStatus(false);
     _positionStreamSubscription?.cancel();
+    _syncTimer?.cancel();
   }
 
   @override
@@ -499,6 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _stopTracking();
     _raceDataSubscription?.cancel();
     _liveLocationsSubscription?.cancel();
+    _syncTimer?.cancel();
     super.dispose();
   }
 
@@ -594,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hasActiveRace ? _activeRaceName.toUpperCase() : "ENTRENAMIENTO LIBRE",
+                        hasActiveRace ? "${_activeRaceName.toUpperCase()} - $_raceDistanceLabel" : "LIBRE - $_raceDistanceLabel",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

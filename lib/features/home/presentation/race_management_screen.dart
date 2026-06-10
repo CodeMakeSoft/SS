@@ -21,8 +21,9 @@ class RaceManagementScreen extends StatefulWidget {
 }
 
 class _RaceManagementScreenState extends State<RaceManagementScreen> {
-  final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
-  
+  final Completer<GoogleMapController> _mapController =
+      Completer<GoogleMapController>();
+
   final Set<Marker> _runnersMarkers = {};
   final Map<String, BitmapDescriptor> _runnersMarkersIcons = {};
   StreamSubscription<QuerySnapshot>? _runnersSubscription;
@@ -47,56 +48,68 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
         .collection('live_locations')
         .snapshots()
         .listen((snapshot) async {
-      for (var change in snapshot.docChanges) {
-        final doc = change.doc;
-        
-        if (change.type == DocumentChangeType.removed) {
-          if (mounted) {
-            setState(() {
-              _runnersMarkers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
-              _runnersMarkersIcons.remove(doc.id);
-            });
+          for (var change in snapshot.docChanges) {
+            final doc = change.doc;
+
+            if (change.type == DocumentChangeType.removed) {
+              if (mounted) {
+                setState(() {
+                  _runnersMarkers.removeWhere(
+                    (m) => m.markerId.value == 'runner_${doc.id}',
+                  );
+                  _runnersMarkersIcons.remove(doc.id);
+                });
+              }
+              continue;
+            }
+
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) continue;
+
+            final lat = data['latitude'] as double?;
+            final lng = data['longitude'] as double?;
+            final photoUrl = data['photoUrl'] as String?;
+            final userName = data['name'] as String? ?? 'Corredor';
+
+            if (lat == null || lng == null) continue;
+
+            if (!_runnersMarkersIcons.containsKey(doc.id)) {
+              try {
+                final icon =
+                    await RunnerMarkerWidget(
+                      photoUrl: photoUrl,
+                      name: userName,
+                    ).toBitmapDescriptor(
+                      logicalSize: const Size(100, 100),
+                      imageSize: const Size(100, 100),
+                    );
+                _runnersMarkersIcons[doc.id] = icon;
+              } catch (e) {
+                debugPrint("Error generating photo marker for ${doc.id}: $e");
+                _runnersMarkersIcons[doc.id] =
+                    BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueAzure,
+                    );
+              }
+            }
+
+            if (mounted) {
+              setState(() {
+                _runnersMarkers.removeWhere(
+                  (m) => m.markerId.value == 'runner_${doc.id}',
+                );
+                _runnersMarkers.add(
+                  Marker(
+                    markerId: MarkerId('runner_${doc.id}'),
+                    position: LatLng(lat, lng),
+                    icon: _runnersMarkersIcons[doc.id]!,
+                    anchor: const Offset(0.5, 0.5),
+                  ),
+                );
+              });
+            }
           }
-          continue;
-        }
-
-        final data = doc.data() as Map<String, dynamic>?;
-        if (data == null) continue;
-        
-        final lat = data['latitude'] as double?;
-        final lng = data['longitude'] as double?;
-        final photoUrl = data['photoUrl'] as String?;
-        
-        if (lat == null || lng == null) continue;
-        
-        if (!_runnersMarkersIcons.containsKey(doc.id)) {
-           try {
-             final icon = await RunnerMarkerWidget(photoUrl: photoUrl).toBitmapDescriptor(
-                logicalSize: const Size(60, 60), 
-                imageSize: const Size(60, 60),
-             );
-             _runnersMarkersIcons[doc.id] = icon;
-           } catch (e) {
-             debugPrint("Error generating photo marker for ${doc.id}: $e");
-             _runnersMarkersIcons[doc.id] = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-           }
-        }
-
-        if (mounted) {
-          setState(() {
-            _runnersMarkers.removeWhere((m) => m.markerId.value == 'runner_${doc.id}');
-            _runnersMarkers.add(
-              Marker(
-                markerId: MarkerId('runner_${doc.id}'),
-                position: LatLng(lat, lng),
-                icon: _runnersMarkersIcons[doc.id]!,
-                anchor: const Offset(0.5, 0.5),
-              )
-            );
-          });
-        }
-      }
-    });
+        });
   }
 
   Future<void> _getUserLocation() async {
@@ -111,17 +124,19 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) return;
     }
-    
+
     if (permission == LocationPermission.deniedForever) return;
 
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
     final myLocation = LatLng(position.latitude, position.longitude);
-    
+
     final GoogleMapController controller = await _mapController.future;
     controller.animateCamera(CameraUpdate.newLatLngZoom(myLocation, 15));
   }
 
-   void _showBibAssignmentModal(String scannedUid, String runnerName) {
+  void _showBibAssignmentModal(String scannedUid, String runnerName) {
     final TextEditingController bibController = TextEditingController();
     final theme = Theme.of(context);
 
@@ -130,94 +145,167 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: theme.cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           contentPadding: const EdgeInsets.all(24),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
             child: Column(
-              mainAxisSize: MainAxisSize.min, 
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text("ASIGNAR DORSAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                Text(
+                  "ASIGNAR DORSAL",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
                 const SizedBox(height: 20),
-                
+
                 // Perfil Cargado
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                   child: Row(
                     children: [
-                      CircleAvatar(backgroundColor: theme.colorScheme.primary, child: Text(runnerName.isNotEmpty ? runnerName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                      CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary,
+                        child: Text(
+                          runnerName.isNotEmpty
+                              ? runnerName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 15),
-                      Expanded(child: Text(runnerName, style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface))),
+                      Expanded(
+                        child: Text(
+                          runnerName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 TextField(
                   controller: bibController,
                   keyboardType: TextInputType.number,
-                  autofocus: true, 
+                  autofocus: true,
                   decoration: InputDecoration(
                     labelText: 'Dorsal',
                     prefixIcon: const Icon(Icons.confirmation_number_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent, 
-                      padding: const EdgeInsets.symmetric(vertical: 15), 
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                     onPressed: () async {
                       final bib = bibController.text.trim();
                       if (bib.isEmpty) return;
-                      
+
                       showDialog(
-                        context: context, barrierDismissible: false,
-                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            const Center(child: CircularProgressIndicator()),
                       );
                       final nav = Navigator.of(context, rootNavigator: true);
 
                       try {
-                        final isTaken = await RaceService.instance.isBibNumberTaken(widget.race.raceId, bib, excludeUserId: scannedUid);
+                        final isTaken = await RaceService.instance
+                            .isBibNumberTaken(
+                              widget.race.raceId,
+                              bib,
+                              excludeUserId: scannedUid,
+                            );
                         if (isTaken) {
                           nav.pop();
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Este dorsal ya está asignado a otro corredor'), backgroundColor: Colors.red));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Error: Este dorsal ya está asignado a otro corredor',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
                           }
                           return;
                         }
-                        
-                        await RaceService.instance.linkUserToRace(widget.race.raceId, scannedUid, bib);
+
+                        await RaceService.instance.linkUserToRace(
+                          widget.race.raceId,
+                          scannedUid,
+                          bib,
+                        );
                         nav.pop();
-                        
+
                         if (context.mounted) {
-                          Navigator.pop(context); 
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$runnerName vinculado (Dorsal #$bib)'), backgroundColor: Colors.green));
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$runnerName vinculado (Dorsal #$bib)',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
                         }
                       } catch (e) {
                         nav.pop();
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        if (context.mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                       }
                     },
-                    child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Confirmar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         );
-      }
+      },
     );
   }
 
-  void _showActionConfirmation(BuildContext context, {
+  void _showActionConfirmation(
+    BuildContext context, {
     required String title,
     required String description,
     required String confirmText,
@@ -232,7 +320,9 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: theme.cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           contentPadding: const EdgeInsets.all(24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -247,23 +337,30 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                 child: Icon(icon, color: color, size: 36),
               ),
               const SizedBox(height: 20),
-              
+
               // Título
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 10),
-              
+
               // Descripción / Advertencia
               Text(
                 description,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 24),
-              
+
               // Botones Cancelar / Confirmar
               Row(
                 children: [
@@ -271,11 +368,16 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                         side: BorderSide(color: theme.dividerColor),
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Cancelar', style: TextStyle(color: theme.colorScheme.onSurface)),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -284,14 +386,22 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                         elevation: 0,
                       ),
                       onPressed: () {
                         Navigator.pop(context); // Cierra el modal
                         onConfirm(); // Ejecuta la función que le pasemos
                       },
-                      child: Text(confirmText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        confirmText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -306,15 +416,23 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('races').doc(widget.race.raceId).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('races')
+          .doc(widget.race.raceId)
+          .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
-        
-        final currentRace = RaceModel.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
+
+        final currentRace = RaceModel.fromMap(
+          snapshot.data!.data() as Map<String, dynamic>,
+          snapshot.data!.id,
+        );
         return _buildContent(context, currentRace);
-      }
+      },
     );
   }
 
@@ -326,7 +444,12 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
     for (int i = 0; i < race.route.length - 1; i++) {
       final p1 = race.route[i];
       final p2 = race.route[i + 1];
-      distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+      distanceTotalMeters += Geolocator.distanceBetween(
+        p1.latitude,
+        p1.longitude,
+        p2.latitude,
+        p2.longitude,
+      );
     }
     double distanceKm = distanceTotalMeters / 1000;
     String raceDistanceLabel = "${distanceKm.toStringAsFixed(1)} KM";
@@ -338,8 +461,11 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: CameraPosition(
-              target: race.route.isNotEmpty 
-                  ? LatLng(race.route.first.latitude, race.route.first.longitude)
+              target: race.route.isNotEmpty
+                  ? LatLng(
+                      race.route.first.latitude,
+                      race.route.first.longitude,
+                    )
                   : const LatLng(19.4326, -99.1332),
               zoom: 15,
             ),
@@ -352,31 +478,43 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapType: MapType.normal,
-            
+
             polylines: {
               if (race.route.isNotEmpty)
                 Polyline(
                   polylineId: const PolylineId('race_route'),
-                  points: race.route.map((p) => LatLng(p.latitude, p.longitude)).toList(),
+                  points: race.route
+                      .map((p) => LatLng(p.latitude, p.longitude))
+                      .toList(),
                   color: Colors.blueAccent,
                   width: 5,
                   jointType: JointType.round,
                 ),
             },
-            
+
             markers: {
               if (race.route.isNotEmpty)
                 Marker(
                   markerId: const MarkerId('start'),
-                  position: LatLng(race.route.first.latitude, race.route.first.longitude),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+                  position: LatLng(
+                    race.route.first.latitude,
+                    race.route.first.longitude,
+                  ),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueGreen,
+                  ),
                   infoWindow: const InfoWindow(title: 'Punto de Partida'),
                 ),
               if (race.route.length > 1)
                 Marker(
                   markerId: const MarkerId('end'),
-                  position: LatLng(race.route.last.latitude, race.route.last.longitude),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                  position: LatLng(
+                    race.route.last.latitude,
+                    race.route.last.longitude,
+                  ),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueRed,
+                  ),
                   infoWindow: const InfoWindow(title: 'Meta'),
                 ),
               ..._runnersMarkers,
@@ -396,33 +534,54 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.1), blurRadius: 10)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
-                    child: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface, size: 20),
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: theme.colorScheme.onSurface,
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                          blurRadius: 10,
+                        ),
+                      ],
                       border: Border.all(color: theme.dividerColor),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.analytics_outlined, color: Colors.blueAccent, size: 20),
+                        const Icon(
+                          Icons.analytics_outlined,
+                          color: Colors.blueAccent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             "${race.name.toUpperCase()} - $raceDistanceLabel",
                             style: TextStyle(
-                              color: theme.colorScheme.onSurface, 
-                              fontWeight: FontWeight.bold, 
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
                               letterSpacing: 1.1,
-                              fontSize: 14
+                              fontSize: 14,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -435,30 +594,35 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                               context: context,
                               backgroundColor: theme.scaffoldBackgroundColor,
                               shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(25),
+                                ),
                               ),
                               builder: (context) {
                                 return SafeArea(
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-
                                         Container(
                                           width: 40,
                                           height: 5,
                                           decoration: BoxDecoration(
                                             color: Colors.grey.withOpacity(0.3),
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(height: 20),
-                                        
+
                                         Text(
                                           "Gestión de la carrera",
                                           style: TextStyle(
-                                            fontSize: 18, 
+                                            fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: theme.colorScheme.onSurface,
                                           ),
@@ -467,17 +631,34 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         ListTile(
                                           leading: Container(
                                             padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
-                                            child: const Icon(Icons.people_alt, color: Colors.blueAccent),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blueAccent
+                                                  .withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.people_alt,
+                                              color: Colors.blueAccent,
+                                            ),
                                           ),
-                                          title: const Text("Lista de Corredores", style: TextStyle(fontWeight: FontWeight.bold)),
-                                          subtitle: const Text("Ver y administrar participantes"),
+                                          title: const Text(
+                                            "Lista de Corredores",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          subtitle: const Text(
+                                            "Ver y administrar participantes",
+                                          ),
                                           onTap: () {
                                             Navigator.pop(context);
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => RunnersListScreen(race: race),
+                                                builder: (context) =>
+                                                    RunnersListScreen(
+                                                      race: race,
+                                                    ),
                                               ),
                                             );
                                           },
@@ -486,17 +667,34 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                           ListTile(
                                             leading: Container(
                                               padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
-                                              child: const Icon(Icons.edit, color: Colors.orange),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.edit,
+                                                color: Colors.orange,
+                                              ),
                                             ),
-                                            title: const Text("Editar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
-                                            subtitle: const Text("Modificar detalles y configuración"),
+                                            title: const Text(
+                                              "Editar Carrera",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            subtitle: const Text(
+                                              "Modificar detalles y configuración",
+                                            ),
                                             onTap: () {
                                               Navigator.pop(context);
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) => CreateRaceScreen(raceToEdit: race),
+                                                  builder: (context) =>
+                                                      CreateRaceScreen(
+                                                        raceToEdit: race,
+                                                      ),
                                                 ),
                                               );
                                             },
@@ -516,10 +714,14 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                 color: theme.colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                              child: const Icon(
+                                Icons.edit,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -530,7 +732,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
 
           Positioned(
             right: 20,
-            bottom: 140, 
+            bottom: 140,
             child: FloatingActionButton(
               mini: true,
               backgroundColor: theme.cardColor,
@@ -548,7 +750,12 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               decoration: BoxDecoration(
                 color: theme.cardColor,
                 borderRadius: BorderRadius.circular(25),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.15), blurRadius: 20)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                    blurRadius: 20,
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -557,10 +764,22 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(race.status.toUpperCase(), 
-                        style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 10)),
-                      Text("GESTIÓN EN VIVO", 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),
+                      Text(
+                        race.status.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        "GESTIÓN EN VIVO",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
                     ],
                   ),
                   Row(
@@ -572,12 +791,16 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                             context: context,
                             backgroundColor: theme.scaffoldBackgroundColor,
                             shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(25),
+                              ),
                             ),
                             builder: (context) {
                               return SafeArea(
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 20,
+                                  ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -586,15 +809,17 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         height: 5,
                                         decoration: BoxDecoration(
                                           color: Colors.grey.withOpacity(0.3),
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 20),
-                                      
+
                                       Text(
                                         "Control de Carrera",
                                         style: TextStyle(
-                                          fontSize: 18, 
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                           color: theme.colorScheme.onSurface,
                                         ),
@@ -606,110 +831,186 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: (race.status == 'upcoming' ? Colors.green : Colors.grey).withOpacity(0.1), 
-                                            shape: BoxShape.circle
+                                            color:
+                                                (race.status == 'upcoming'
+                                                        ? Colors.green
+                                                        : Colors.grey)
+                                                    .withOpacity(0.1),
+                                            shape: BoxShape.circle,
                                           ),
-                                          child: Icon(Icons.play_arrow, color: race.status == 'upcoming' ? Colors.green : Colors.grey),
+                                          child: Icon(
+                                            Icons.play_arrow,
+                                            color: race.status == 'upcoming'
+                                                ? Colors.green
+                                                : Colors.grey,
+                                          ),
                                         ),
                                         title: Text(
-                                          "Iniciar Carrera", 
+                                          "Iniciar Carrera",
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: race.status == 'upcoming' ? null : Colors.grey,
-                                          )
+                                            color: race.status == 'upcoming'
+                                                ? null
+                                                : Colors.grey,
+                                          ),
                                         ),
-                                        onTap: race.status == 'upcoming' 
-                                          ? () {
-                                              Navigator.pop(context);
-                                              _showActionConfirmation(
-                                                context,
-                                                title: '¿Iniciar Carrera?',
-                                                description: 'Esta acción comenzará el cronómetro oficial y cambiará el estado de la carrera a "En Curso".',
-                                                confirmText: 'Iniciar',
-                                                color: Colors.green,
-                                                icon: Icons.play_arrow,
-                                                onConfirm: () async {
-                                                  await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
-                                                  await RaceService.instance.sendGlobalAlert(
-                                                    race.raceId, 
-                                                    'countdown_start', 
-                                                    '¡Preparados! La carrera comienza en', 
-                                                    countdownSeconds: 3,
-                                                  );
-                                                  Future.delayed(const Duration(seconds: 7), () {
-                                                    RaceService.instance.clearGlobalAlert(race.raceId);
-                                                  });
-                                                },
-                                              );
-                                            }
-                                          : null,
+                                        onTap: race.status == 'upcoming'
+                                            ? () {
+                                                Navigator.pop(context);
+                                                _showActionConfirmation(
+                                                  context,
+                                                  title: '¿Iniciar Carrera?',
+                                                  description:
+                                                      'Esta acción comenzará el cronómetro oficial y cambiará el estado de la carrera a "En Curso".',
+                                                  confirmText: 'Iniciar',
+                                                  color: Colors.green,
+                                                  icon: Icons.play_arrow,
+                                                  onConfirm: () async {
+                                                    await RaceService.instance
+                                                        .updateRaceStatus(
+                                                          race.raceId,
+                                                          'ongoing',
+                                                        );
+                                                    await RaceService.instance
+                                                        .sendGlobalAlert(
+                                                          race.raceId,
+                                                          'countdown_start',
+                                                          '¡Preparados! La carrera comienza en',
+                                                          countdownSeconds: 3,
+                                                        );
+                                                    Future.delayed(
+                                                      const Duration(
+                                                        seconds: 7,
+                                                      ),
+                                                      () {
+                                                        RaceService.instance
+                                                            .clearGlobalAlert(
+                                                              race.raceId,
+                                                            );
+                                                      },
+                                                    );
+                                                  },
+                                                );
+                                              }
+                                            : null,
                                       ),
-                                      
+
                                       ListTile(
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: (race.status == 'paused' ? Colors.green : Colors.orange).withOpacity(0.1), shape: BoxShape.circle),
-                                          child: Icon(race.status == 'paused' ? Icons.play_arrow : Icons.pause, color: race.status == 'paused' ? Colors.green : Colors.orange),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                (race.status == 'paused'
+                                                        ? Colors.green
+                                                        : Colors.orange)
+                                                    .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            race.status == 'paused'
+                                                ? Icons.play_arrow
+                                                : Icons.pause,
+                                            color: race.status == 'paused'
+                                                ? Colors.green
+                                                : Colors.orange,
+                                          ),
                                         ),
-                                        title: Text(race.status == 'paused' ? "Reanudar Carrera" : "Pausar Carrera", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        title: Text(
+                                          race.status == 'paused'
+                                              ? "Reanudar Carrera"
+                                              : "Pausar Carrera",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                         onTap: () {
-                                          Navigator.pop(context); 
-                                          
+                                          Navigator.pop(context);
+
                                           if (race.status == 'paused') {
                                             _showActionConfirmation(
                                               context,
                                               title: '¿Reanudar Carrera?',
-                                              description: 'El cronómetro continuará su marcha.',
+                                              description:
+                                                  'El cronómetro continuará su marcha.',
                                               confirmText: 'Reanudar',
                                               color: Colors.green,
                                               icon: Icons.play_arrow,
                                               onConfirm: () async {
-                                                await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
-                                                await RaceService.instance.sendGlobalAlert(
-                                                  race.raceId, 
-                                                  'countdown_start', 
-                                                  '¡La carrera se reanuda en', 
-                                                  countdownSeconds: 3,
+                                                await RaceService.instance
+                                                    .updateRaceStatus(
+                                                      race.raceId,
+                                                      'ongoing',
+                                                    );
+                                                await RaceService.instance
+                                                    .sendGlobalAlert(
+                                                      race.raceId,
+                                                      'countdown_start',
+                                                      '¡La carrera se reanuda en',
+                                                      countdownSeconds: 3,
+                                                    );
+                                                Future.delayed(
+                                                  const Duration(seconds: 7),
+                                                  () {
+                                                    RaceService.instance
+                                                        .clearGlobalAlert(
+                                                          race.raceId,
+                                                        );
+                                                  },
                                                 );
-                                                Future.delayed(const Duration(seconds: 7), () {
-                                                  RaceService.instance.clearGlobalAlert(race.raceId);
-                                                });
                                               },
                                             );
                                           } else {
                                             _showActionConfirmation(
                                               context,
                                               title: '¿Pausar Carrera?',
-                                              description: 'Se detendrá el cronómetro temporalmente. Podrás reanudarlo después.',
+                                              description:
+                                                  'Se detendrá el cronómetro temporalmente. Podrás reanudarlo después.',
                                               confirmText: 'Pausar',
                                               color: Colors.orange,
                                               icon: Icons.pause,
                                               onConfirm: () async {
-                                                await RaceService.instance.updateRaceStatus(race.raceId, 'paused');
-                                                await RaceService.instance.sendGlobalAlert(
-                                                  race.raceId, 
-                                                  'paused', 
-                                                  'Carrera Pausada', 
-                                                );
+                                                await RaceService.instance
+                                                    .updateRaceStatus(
+                                                      race.raceId,
+                                                      'paused',
+                                                    );
+                                                await RaceService.instance
+                                                    .sendGlobalAlert(
+                                                      race.raceId,
+                                                      'paused',
+                                                      'Carrera Pausada',
+                                                    );
                                               },
                                             );
                                           }
-                                        }
+                                        },
                                       ),
                                       ListTile(
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
-                                          child: const Icon(Icons.stop, color: Colors.red),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.stop,
+                                            color: Colors.red,
+                                          ),
                                         ),
-                                        title: const Text("Terminar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                        title: const Text(
+                                          "Terminar Carrera",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                         onTap: () {
-                                          Navigator.pop(context); 
-                                          
+                                          Navigator.pop(context);
+
                                           _showActionConfirmation(
                                             context,
                                             title: '¿Terminar Carrera?',
-                                            description: '¡Atención! Esta acción es irreversible. Finalizará la recolección de tiempos.',
+                                            description:
+                                                '¡Atención! Esta acción es irreversible. Finalizará la recolección de tiempos.',
                                             confirmText: 'Finalizar',
                                             color: Colors.red,
                                             icon: Icons.stop,
@@ -718,26 +1019,51 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                                 _isLoading = true;
                                               });
                                               try {
-                                                await RaceService.instance.updateRaceStatus(race.raceId, 'finished');
-                                                await RaceService.instance.sendGlobalAlert(
-                                                  race.raceId, 
-                                                  'countdown_finish', 
-                                                  'La carrera termina en', 
-                                                  countdownSeconds: 5,
+                                                await RaceService.instance
+                                                    .updateRaceStatus(
+                                                      race.raceId,
+                                                      'finished',
+                                                    );
+                                                await RaceService.instance
+                                                    .sendGlobalAlert(
+                                                      race.raceId,
+                                                      'countdown_finish',
+                                                      'La carrera termina en',
+                                                      countdownSeconds: 5,
+                                                    );
+                                                Future.delayed(
+                                                  const Duration(seconds: 8),
+                                                  () {
+                                                    RaceService.instance
+                                                        .clearGlobalAlert(
+                                                          race.raceId,
+                                                        );
+                                                  },
                                                 );
-                                                Future.delayed(const Duration(seconds: 8), () {
-                                                  RaceService.instance.clearGlobalAlert(race.raceId);
-                                                });
-                                                
-                                                final doc = await FirebaseFirestore.instance.collection('races').doc(race.raceId).get();
+
+                                                final doc =
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection('races')
+                                                        .doc(race.raceId)
+                                                        .get();
                                                 if (doc.exists && mounted) {
-                                                  final updatedRace = RaceModel.fromMap(doc.data()!, doc.id);
+                                                  final updatedRace =
+                                                      RaceModel.fromMap(
+                                                        doc.data()!,
+                                                        doc.id,
+                                                      );
                                                   setState(() {
                                                     _isLoading = false;
                                                   });
                                                   Navigator.pushReplacement(
                                                     context,
-                                                    MaterialPageRoute(builder: (context) => RaceSummaryScreen(race: updatedRace)),
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          RaceSummaryScreen(
+                                                            race: updatedRace,
+                                                          ),
+                                                    ),
                                                   );
                                                 } else {
                                                   if (mounted) {
@@ -751,93 +1077,189 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                                   setState(() {
                                                     _isLoading = false;
                                                   });
-                                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al finalizar: $e'), backgroundColor: Colors.redAccent));
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error al finalizar: $e',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.redAccent,
+                                                    ),
+                                                  );
                                                 }
                                               }
                                             },
                                           );
                                         },
                                       ),
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20),
-                                          child: Divider(), 
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 20,
                                         ),
+                                        child: Divider(),
+                                      ),
 
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blueAccent
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.campaign,
+                                            color: Colors.blueAccent,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          "Crear Aviso",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        subtitle: const Text(
+                                          "Enviar notificación push a todos",
+                                        ),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _showCustomMessageDialog(
+                                            context,
+                                            race.raceId,
+                                          );
+                                        },
+                                      ),
+
+                                      if (race.status == 'finished')
                                         ListTile(
                                           leading: Container(
                                             padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
-                                            child: const Icon(Icons.campaign, color: Colors.blueAccent),
-                                          ),
-                                          title: const Text("Crear Aviso", style: TextStyle(fontWeight: FontWeight.bold)),
-                                          subtitle: const Text("Enviar notificación push a todos"),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            _showCustomMessageDialog(context, race.raceId);
-                                          },
-                                        ),
-                                        
-                                        if (race.status == 'finished')
-                                          ListTile(
-                                            leading: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), shape: BoxShape.circle),
-                                              child: const Icon(Icons.archive, color: Colors.purple),
+                                            decoration: BoxDecoration(
+                                              color: Colors.purple.withOpacity(
+                                                0.1,
+                                              ),
+                                              shape: BoxShape.circle,
                                             ),
-                                            title: const Text("Archivar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
-                                            subtitle: const Text("Mueve la carrera al historial", style: TextStyle(fontSize: 11)),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _showDoubleConfirmationDialog(
-                                                context, 
-                                                onConfirm: () async {
-                                                  await RaceService.instance.archiveRaceAndKeepPodium(race);
-                                                  if (context.mounted) Navigator.pop(context); // Cierra Admin Screen
-                                                }
-                                              );
-                                            },
+                                            child: const Icon(
+                                              Icons.archive,
+                                              color: Colors.purple,
+                                            ),
                                           ),
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20),
-                                          child: Divider(), 
-                                        ),
-                                        ListTile(
-                                          leading: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
-                                            child: const Icon(Icons.cancel, color: Colors.redAccent),
+                                          title: const Text(
+                                            "Archivar Carrera",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                          title: const Text("Cancelar Carrera", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                          subtitle: const Text(
+                                            "Mueve la carrera al historial",
+                                            style: TextStyle(fontSize: 11),
+                                          ),
                                           onTap: () {
                                             Navigator.pop(context);
-                                            _showCancelConfirmationDialog(
-                                              context, 
+                                            _showDoubleConfirmationDialog(
+                                              context,
                                               onConfirm: () async {
-                                                showDialog(
-                                                  context: context, barrierDismissible: false,
-                                                  builder: (_) => const Center(child: CircularProgressIndicator()),
-                                                );
-                                                try {
-                                                  await RaceService.instance.deleteRace(race.raceId);
-                                                  if (context.mounted) {
-                                                    Navigator.pop(context); // Cierra el indicador de progreso
-                                                    Navigator.pop(context); // Vuelve atrás (cierra Admin Race Screen)
-                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera cancelada correctamente')));
-                                                  }
-                                                } catch (e) {
-                                                  if (context.mounted) {
-                                                    Navigator.pop(context); // Cierra el indicador de progreso
-                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al cancelar: $e'), backgroundColor: Colors.redAccent));
-                                                  }
-                                                }
-                                              }
+                                                await RaceService.instance
+                                                    .archiveRaceAndKeepPodium(
+                                                      race,
+                                                    );
+                                                if (context.mounted)
+                                                  Navigator.pop(
+                                                    context,
+                                                  ); // Cierra Admin Screen
+                                              },
                                             );
                                           },
                                         ),
-                                      ],
-                                    ),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                        ),
+                                        child: Divider(),
+                                      ),
+                                      ListTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.redAccent.withOpacity(
+                                              0.1,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.cancel,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                        title: const Text(
+                                          "Cancelar Carrera",
+                                          style: TextStyle(
+                                            color: Colors.redAccent,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _showCancelConfirmationDialog(
+                                            context,
+                                            onConfirm: () async {
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              );
+                                              try {
+                                                await RaceService.instance
+                                                    .deleteRace(race.raceId);
+                                                if (context.mounted) {
+                                                  Navigator.pop(
+                                                    context,
+                                                  ); // Cierra el indicador de progreso
+                                                  Navigator.pop(
+                                                    context,
+                                                  ); // Vuelve atrás (cierra Admin Race Screen)
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Carrera cancelada correctamente',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  Navigator.pop(
+                                                    context,
+                                                  ); // Cierra el indicador de progreso
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error al cancelar: $e',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.redAccent,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                );
+                                ),
+                              );
                             },
                           );
                         },
@@ -853,9 +1275,9 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                         ),
                         child: const Icon(Icons.route),
                       ),
-                      
+
                       const SizedBox(width: 10),
-                      
+
                       ElevatedButton(
                         onPressed: () async {
                           final scannedUid = await showDialog(
@@ -864,26 +1286,44 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                           );
                           if (scannedUid != null && scannedUid is String) {
                             showDialog(
-                              context: context, barrierDismissible: false,
-                              builder: (_) => const Center(child: CircularProgressIndicator()),
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
                             );
                             try {
-                              final doc = await FirebaseFirestore.instance.collection('users').doc(scannedUid).get();
-                              
-                              if (context.mounted) Navigator.pop(context); 
+                              final doc = await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(scannedUid)
+                                  .get();
+
+                              if (context.mounted) Navigator.pop(context);
                               if (!doc.exists) {
-                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario no encontrado'), backgroundColor: Colors.redAccent));
+                                if (context.mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Usuario no encontrado'),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
                                 return;
                               }
-                              final userData = doc.data() as Map<String, dynamic>;
-                              final runnerName = userData['displayName'] ?? 'Sin nombre';
+                              final userData =
+                                  doc.data() as Map<String, dynamic>;
+                              final runnerName =
+                                  userData['displayName'] ?? 'Sin nombre';
                               if (context.mounted) {
                                 _showBibAssignmentModal(scannedUid, runnerName);
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                Navigator.pop(context); 
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error de conexión')));
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Error de conexión'),
+                                  ),
+                                );
                               }
                             }
                           }
@@ -894,7 +1334,9 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                           elevation: 0,
                           padding: const EdgeInsets.all(14),
                           minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
                         child: const Icon(Icons.qr_code_scanner),
                       ),
@@ -920,10 +1362,10 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       ),
     );
   }
-  
+
   void _showCustomMessageDialog(BuildContext context, String raceId) {
     final TextEditingController _messageController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -948,8 +1390,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               if (_messageController.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
                 await RaceService.instance.sendGlobalAlert(
-                  raceId, 
-                  'custom_message', 
+                  raceId,
+                  'custom_message',
                   _messageController.text.trim(),
                 );
                 // Hide the message after 10 seconds
@@ -958,21 +1400,35 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                 });
               }
             },
-            child: const Text("Enviar a Todos", style: TextStyle(color: Colors.white)),
+            child: const Text(
+              "Enviar a Todos",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showDoubleConfirmationDialog(BuildContext context, {required VoidCallback onConfirm}) {
+  void _showDoubleConfirmationDialog(
+    BuildContext context, {
+    required VoidCallback onConfirm,
+  }) {
     showDialog(
       context: context,
       builder: (ctx1) => AlertDialog(
-        title: const Text("Paso 1: Confirmación de Borrado", style: TextStyle(color: Colors.red)),
-        content: const Text("¿Estás seguro de que quieres archivar esta carrera? Los datos pesados se eliminarán para ahorrar espacio, conservando únicamente el top 3 del podio."),
+        title: const Text(
+          "Paso 1: Confirmación de Borrado",
+          style: TextStyle(color: Colors.red),
+        ),
+        content: const Text(
+          "¿Estás seguro de que quieres archivar esta carrera? Los datos pesados se eliminarán para ahorrar espacio, conservando únicamente el top 3 del podio.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx1), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx1),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
@@ -980,46 +1436,82 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               showDialog(
                 context: context,
                 builder: (ctx2) => AlertDialog(
-                  title: const Text("Paso 2: Confirmación Definitiva", style: TextStyle(color: Colors.red)),
-                  content: const Text("¡ATENCIÓN! Esta acción NO se puede deshacer. ¿Proceder con el borrado/archivado?"),
+                  title: const Text(
+                    "Paso 2: Confirmación Definitiva",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  content: const Text(
+                    "¡ATENCIÓN! Esta acción NO se puede deshacer. ¿Proceder con el borrado/archivado?",
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx2), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx2),
+                      child: const Text(
+                        "Cancelar",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
                       onPressed: () {
                         Navigator.pop(ctx2);
                         onConfirm();
                       },
-                      child: const Text("Archivar Definitivamente", style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        "Archivar Definitivamente",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               );
             },
-            child: const Text("Siguiente Paso", style: TextStyle(color: Colors.white)),
+            child: const Text(
+              "Siguiente Paso",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showCancelConfirmationDialog(BuildContext context, {required VoidCallback onConfirm}) {
+  void _showCancelConfirmationDialog(
+    BuildContext context, {
+    required VoidCallback onConfirm,
+  }) {
     showDialog(
       context: context,
       builder: (ctx1) => AlertDialog(
         backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Confirmación de Cancelación", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-        content: const Text("¿Estás seguro de que deseas CANCELAR esta carrera? Se eliminará la carrera de la base de datos y se liberará a todos los corredores vinculados."),
+        title: const Text(
+          "Confirmación de Cancelación",
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          "¿Estás seguro de que deseas CANCELAR esta carrera? Se eliminará la carrera de la base de datos y se liberará a todos los corredores vinculados.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx1), child: const Text("Atrás", style: TextStyle(color: Colors.grey))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx1),
+            child: const Text("Atrás", style: TextStyle(color: Colors.grey)),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(ctx1);
               onConfirm();
             },
-            child: const Text("Sí, Cancelar Carrera", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Sí, Cancelar Carrera",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),

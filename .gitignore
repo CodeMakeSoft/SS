@@ -66,3 +66,6 @@ firebase.json
 key.properties
 **/*.keystore
 **/*.jks
+
+# Documentation
+Documentation/

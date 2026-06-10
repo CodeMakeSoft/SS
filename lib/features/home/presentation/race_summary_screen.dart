@@ -63,7 +63,7 @@ class RaceSummaryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    DateFormat('dd de MMMM, yyyy').format(race.date),
+                    DateFormat("dd 'de' MMMM, yyyy").format(race.date),
                     style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 16),
                   ),
                 ],

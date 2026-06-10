@@ -222,7 +222,7 @@ class _AdminRacesScreenState extends State<AdminRacesScreen> {
       final p2 = race.route[i + 1];
       distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
     }
-    int distanceKm = (distanceTotalMeters / 1000).ceil();
-    return "$distanceKm KM";
+    double distanceKm = distanceTotalMeters / 1000;
+    return "${distanceKm.toStringAsFixed(1)} KM";
   }
 }

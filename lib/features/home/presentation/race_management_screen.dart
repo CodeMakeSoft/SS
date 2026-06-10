@@ -6,6 +6,7 @@ import '../data/models/race_model.dart';
 import '../data/race_service.dart';
 import 'runners_list_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'race_summary_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:widget_to_marker/widget_to_marker.dart';
@@ -25,6 +26,7 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
   final Set<Marker> _runnersMarkers = {};
   final Map<String, BitmapDescriptor> _runnersMarkersIcons = {};
   StreamSubscription<QuerySnapshot>? _runnersSubscription;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -326,8 +328,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
       final p2 = race.route[i + 1];
       distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
     }
-    int distanceKm = (distanceTotalMeters / 1000).ceil();
-    String raceDistanceLabel = "$distanceKm KM";
+    double distanceKm = distanceTotalMeters / 1000;
+    String raceDistanceLabel = "${distanceKm.toStringAsFixed(1)} KM";
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -341,7 +343,11 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                   : const LatLng(19.4326, -99.1332),
               zoom: 15,
             ),
-            onMapCreated: (controller) => _mapController.complete(controller),
+            onMapCreated: (controller) {
+              if (!_mapController.isCompleted) {
+                _mapController.complete(controller);
+              }
+            },
             myLocationEnabled: false,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
@@ -596,35 +602,47 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                       const SizedBox(height: 15),
 
                                       ListTile(
+                                        enabled: race.status == 'upcoming',
                                         leading: Container(
                                           padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
-                                          child: const Icon(Icons.play_arrow, color: Colors.green),
+                                          decoration: BoxDecoration(
+                                            color: (race.status == 'upcoming' ? Colors.green : Colors.grey).withOpacity(0.1), 
+                                            shape: BoxShape.circle
+                                          ),
+                                          child: Icon(Icons.play_arrow, color: race.status == 'upcoming' ? Colors.green : Colors.grey),
                                         ),
-                                        title: const Text("Iniciar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          _showActionConfirmation(
-                                            context,
-                                            title: '¿Iniciar Carrera?',
-                                            description: 'Esta acción comenzará el cronómetro oficial y cambiará el estado de la carrera a "En Curso".',
-                                            confirmText: 'Iniciar',
-                                            color: Colors.green,
-                                            icon: Icons.play_arrow,
-                                            onConfirm: () async {
-                                              await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
-                                              await RaceService.instance.sendGlobalAlert(
-                                                race.raceId, 
-                                                'countdown_start', 
-                                                '¡Preparados! La carrera comienza en', 
-                                                countdownSeconds: 3,
+                                        title: Text(
+                                          "Iniciar Carrera", 
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: race.status == 'upcoming' ? null : Colors.grey,
+                                          )
+                                        ),
+                                        onTap: race.status == 'upcoming' 
+                                          ? () {
+                                              Navigator.pop(context);
+                                              _showActionConfirmation(
+                                                context,
+                                                title: '¿Iniciar Carrera?',
+                                                description: 'Esta acción comenzará el cronómetro oficial y cambiará el estado de la carrera a "En Curso".',
+                                                confirmText: 'Iniciar',
+                                                color: Colors.green,
+                                                icon: Icons.play_arrow,
+                                                onConfirm: () async {
+                                                  await RaceService.instance.updateRaceStatus(race.raceId, 'ongoing');
+                                                  await RaceService.instance.sendGlobalAlert(
+                                                    race.raceId, 
+                                                    'countdown_start', 
+                                                    '¡Preparados! La carrera comienza en', 
+                                                    countdownSeconds: 3,
+                                                  );
+                                                  Future.delayed(const Duration(seconds: 7), () {
+                                                    RaceService.instance.clearGlobalAlert(race.raceId);
+                                                  });
+                                                },
                                               );
-                                              Future.delayed(const Duration(seconds: 7), () {
-                                                RaceService.instance.clearGlobalAlert(race.raceId);
-                                              });
-                                            },
-                                          );
-                                        }
+                                            }
+                                          : null,
                                       ),
                                       
                                       ListTile(
@@ -696,16 +714,46 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                             color: Colors.red,
                                             icon: Icons.stop,
                                             onConfirm: () async {
-                                              await RaceService.instance.updateRaceStatus(race.raceId, 'finished');
-                                              await RaceService.instance.sendGlobalAlert(
-                                                race.raceId, 
-                                                'countdown_finish', 
-                                                'La carrera termina en', 
-                                                countdownSeconds: 5,
-                                              );
-                                              Future.delayed(const Duration(seconds: 8), () {
-                                                RaceService.instance.clearGlobalAlert(race.raceId);
+                                              setState(() {
+                                                _isLoading = true;
                                               });
+                                              try {
+                                                await RaceService.instance.updateRaceStatus(race.raceId, 'finished');
+                                                await RaceService.instance.sendGlobalAlert(
+                                                  race.raceId, 
+                                                  'countdown_finish', 
+                                                  'La carrera termina en', 
+                                                  countdownSeconds: 5,
+                                                );
+                                                Future.delayed(const Duration(seconds: 8), () {
+                                                  RaceService.instance.clearGlobalAlert(race.raceId);
+                                                });
+                                                
+                                                final doc = await FirebaseFirestore.instance.collection('races').doc(race.raceId).get();
+                                                if (doc.exists && mounted) {
+                                                  final updatedRace = RaceModel.fromMap(doc.data()!, doc.id);
+                                                  setState(() {
+                                                    _isLoading = false;
+                                                  });
+                                                  Navigator.pushReplacement(
+                                                    context,
+                                                    MaterialPageRoute(builder: (context) => RaceSummaryScreen(race: updatedRace)),
+                                                  );
+                                                } else {
+                                                  if (mounted) {
+                                                    setState(() {
+                                                      _isLoading = false;
+                                                    });
+                                                  }
+                                                }
+                                              } catch (e) {
+                                                if (mounted) {
+                                                  setState(() {
+                                                    _isLoading = false;
+                                                  });
+                                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al finalizar: $e'), backgroundColor: Colors.redAccent));
+                                                }
+                                              }
                                             },
                                           );
                                         },
@@ -736,8 +784,8 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                               decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), shape: BoxShape.circle),
                                               child: const Icon(Icons.archive, color: Colors.purple),
                                             ),
-                                            title: const Text("Archivar Carrera (Borrar)", style: TextStyle(fontWeight: FontWeight.bold)),
-                                            subtitle: const Text("Limpiará datos y guardará el Podio de 3", style: TextStyle(fontSize: 11)),
+                                            title: const Text("Archivar Carrera", style: TextStyle(fontWeight: FontWeight.bold)),
+                                            subtitle: const Text("Mueve la carrera al historial", style: TextStyle(fontSize: 11)),
                                             onTap: () {
                                               Navigator.pop(context);
                                               _showDoubleConfirmationDialog(
@@ -749,6 +797,43 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                                               );
                                             },
                                           ),
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 20),
+                                          child: Divider(), 
+                                        ),
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
+                                            child: const Icon(Icons.cancel, color: Colors.redAccent),
+                                          ),
+                                          title: const Text("Cancelar Carrera", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _showCancelConfirmationDialog(
+                                              context, 
+                                              onConfirm: () async {
+                                                showDialog(
+                                                  context: context, barrierDismissible: false,
+                                                  builder: (_) => const Center(child: CircularProgressIndicator()),
+                                                );
+                                                try {
+                                                  await RaceService.instance.deleteRace(race.raceId);
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context); // Cierra el indicador de progreso
+                                                    Navigator.pop(context); // Vuelve atrás (cierra Admin Race Screen)
+                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera cancelada correctamente')));
+                                                  }
+                                                } catch (e) {
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context); // Cierra el indicador de progreso
+                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al cancelar: $e'), backgroundColor: Colors.redAccent));
+                                                  }
+                                                }
+                                              }
+                                            );
+                                          },
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -818,7 +903,19 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
                 ],
               ),
             ),
-          )
+          ),
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.55),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3.5,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -900,6 +997,29 @@ class _RaceManagementScreenState extends State<RaceManagementScreen> {
               );
             },
             child: const Text("Siguiente Paso", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCancelConfirmationDialog(BuildContext context, {required VoidCallback onConfirm}) {
+    showDialog(
+      context: context,
+      builder: (ctx1) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Confirmación de Cancelación", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: const Text("¿Estás seguro de que deseas CANCELAR esta carrera? Se eliminará la carrera de la base de datos y se liberará a todos los corredores vinculados."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx1), child: const Text("Atrás", style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx1);
+              onConfirm();
+            },
+            child: const Text("Sí, Cancelar Carrera", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

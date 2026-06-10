@@ -14,29 +14,20 @@ class MainSkeleton extends StatefulWidget {
   const MainSkeleton({super.key});
 
   @override
-  State<MainSkeleton> createState() => _MainSkeletonState();
+  State<MainSkeleton> createState() => MainSkeletonState();
 }
 
-class _MainSkeletonState extends State<MainSkeleton> {
+class MainSkeletonState extends State<MainSkeleton> {
   int _currentIndex = 0;
   final FirebaseAuthService _authService = FirebaseAuthService();
+  String? _previousRaceId;
+  bool _isFirstLoad = true;
 
-  final List<Widget> _screensUserAndTrial = [
-    const HomeScreen(),
-    const StatsScreen(),
-    const ProfileScreen(),
-  ];
-
-  final List<Widget> _screensAdmins = [
-    const AdminRacesScreen(),
-    const AdminManagementScreen(),
-    const ProfileScreen(),
-  ];
-
-  final List<Widget> _screensSudo = [
-    const ProfileScreen(),
-    //Pending to development and defining this part
-  ];
+  void setSelectedIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   void initState() {
@@ -95,14 +86,52 @@ class _MainSkeletonState extends State<MainSkeleton> {
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final user = userProvider.userData;
+
+    // Detectar si el usuario fue agregado a una carrera (activeRaceId pasó de null a un valor)
+    if (user == null) {
+      _previousRaceId = null;
+      _isFirstLoad = true;
+    } else {
+      if (_isFirstLoad) {
+        _previousRaceId = user.activeRaceId;
+        _isFirstLoad = false;
+      } else if (user.activeRaceId != _previousRaceId) {
+        final oldId = _previousRaceId;
+        _previousRaceId = user.activeRaceId;
+        
+        if (oldId == null && user.activeRaceId != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              // Cerrar cualquier modal/diálogo abierto (como el modal de Tu Código QR)
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              // Cambiar a la pantalla de Home (index 0)
+              setState(() {
+                _currentIndex = 0;
+              });
+            }
+          });
+        }
+      }
+    }
+
     final bool isAdmin = user?.role == 'admin' || user?.role == 'super_admin';
     final bool isSudo = user?.role == 'sudo';
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
     final List<Widget> currentScreens = isSudo 
-    ? _screensSudo 
-    : (isAdmin ? _screensAdmins : _screensUserAndTrial);
+    ? [
+        const ProfileScreen(),
+      ] 
+    : (isAdmin ? [
+        const AdminRacesScreen(),
+        const AdminManagementScreen(),
+        const ProfileScreen(),
+      ] : [
+        const HomeScreen(),
+        StatsScreen(isSelected: _currentIndex == 1),
+        const ProfileScreen(),
+      ]);
     if(_currentIndex >= currentScreens.length) {
       _currentIndex = 0;
     }

@@ -7,14 +7,21 @@ class RunStateProvider extends ChangeNotifier {
   bool _isTracking = false;
   int _durationInSeconds = 0;
   Timer? _timer;
+  String? _lastFinishedRaceId;
 
   // Getters para que las pantallas puedan leer los valores
   double get totalDistanceMeters => _totalDistanceMeters;
   double get currentSpeed => _currentSpeed;
   bool get isTracking => _isTracking;
   int get durationInSeconds => _durationInSeconds;
+  String? get lastFinishedRaceId => _lastFinishedRaceId;
 
   // Setters para actualizar los valores (y avisar a todas las pantallas)
+  void setLastFinishedRaceId(String? id) {
+    _lastFinishedRaceId = id;
+    notifyListeners();
+  }
+
   void updateStats({required double distance, required double speed}) {
     _totalDistanceMeters = distance;
     _currentSpeed = speed;

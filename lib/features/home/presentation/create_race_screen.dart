@@ -180,7 +180,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Evento creado con éxito'),
+            content: const Text('Carrera creada con éxito'),
             backgroundColor: Colors.green,
           ),
         );
@@ -205,7 +205,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          widget.raceToEdit == null ? 'Configurar Evento' : 'Editar Evento', 
+          widget.raceToEdit == null ? 'Configurar Carrera' : 'Editar Carrera', 
           style: const TextStyle(fontWeight: FontWeight.bold)
         ),
         backgroundColor: Colors.transparent,
@@ -224,7 +224,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
                   _buildSectionTitle("Información General"),
                   _buildTextField(
                     controller: _nameController,
-                    label: "Nombre del Evento",
+                    label: "Nombre de la Carrera",
                     icon: Icons.emoji_events_outlined,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return "El nombre es obligatorio";
@@ -274,7 +274,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  _buildSectionTitle("Tags del Evento"),
+                  _buildSectionTitle("Tags de la Carrera"),
                   Row(
                     children: [
                       Expanded(
@@ -387,7 +387,7 @@ class _CreateRaceScreenState extends State<CreateRaceScreen> {
             shadowColor: const Color(0xFF0D47A1).withOpacity(0.4),
           ),
           child: Text(
-            widget.raceToEdit == null ? 'LANZAR EVENTO' : 'GUARDAR CAMBIOS',
+            widget.raceToEdit == null ? 'LANZAR CARRERA' : 'GUARDAR CAMBIOS',
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5),
           ),
         ),

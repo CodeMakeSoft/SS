@@ -14,6 +14,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/race_model.dart';
 import '../data/race_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../layout/main_skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,8 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final p2 = _activeRaceRoute[i + 1];
             distanceTotalMeters += Geolocator.distanceBetween(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
           }
-          double distanceKm = double.parse((distanceTotalMeters / 1000).toStringAsFixed(1));
-          _raceDistanceLabel = "$distanceKm KM";
+          double distanceKm = distanceTotalMeters / 1000;
+          _raceDistanceLabel = "${distanceKm.toStringAsFixed(1)} KM";
 
           _activeRaceStartTime = race.startTime;
           
@@ -166,10 +167,10 @@ class _HomeScreenState extends State<HomeScreen> {
                if (myUid != null) {
                   final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
                   final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
-                  RaceService.instance.submitRaceResult(doc.id, myUid, myName, myPhoto, 0, true);
-                  
                   final userProv = Provider.of<UserProvider>(context, listen: false);
+                  final myBib = userProv.userData?.activeBibNumber;
                   final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                  RaceService.instance.submitRaceResult(doc.id, myUid, myName, myPhoto, 0, true, myBib);
                   
                   LocalDatabase.instance.saveRaceHistory(
                     doc.id, 
@@ -182,16 +183,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                }
                
-               if (mounted) {
-                 showDialog(
-                   context: context,
-                   builder: (ctx) => AlertDialog(
-                     title: const Text("Carrera Terminada"),
-                     content: const Text("El organizador ha finalizado la carrera de manera global. Tus estadísticas han sido guardadas como DNF (No terminó)."),
-                     actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Entendido"))]
-                   )
-                 );
-               }
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.flag, color: Colors.redAccent, size: 30),
+                          SizedBox(width: 10),
+                          Expanded(child: Text("Carrera Terminada")),
+                        ],
+                      ),
+                      content: const Text("El organizador ha finalizado la carrera de manera global. Tus estadísticas han sido guardadas como DNF (No terminó)."),
+                      actions: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            
+                            final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                            runProv.setLastFinishedRaceId(doc.id);
+                            runProv.reset();
+                            
+                            setState(() {
+                              _isFinished = true;
+                              _isTracking = false;
+                              _totalDistanceMeters = 0.0;
+                              _currentSpeed = 0.0;
+                              _isPaused = false;
+                            });
+
+                            final skeletonState = context.findAncestorStateOfType<MainSkeletonState>();
+                            if (skeletonState != null) {
+                              skeletonState.setSelectedIndex(1); // 1 = StatsScreen / Historial
+                            }
+                          },
+                          child: const Text("Entendido"),
+                        ),
+                      ],
+                    ),
+                  );
+                }
            }
            
            final myUid = FirebaseAuth.instance.currentUser?.uid;
@@ -341,7 +374,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startTracking(bool isTrialUser, String? raceId) async {
     _outOfRouteWarnings = 0;
-    setState(() => _isTracking = true);
+    setState(() {
+      _isTracking = true;
+      _isDisqualified = false;
+      _isFinished = false;
+    });
     _isSprintMode = false;
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (timer) {  //TODO: Seconds to update location
@@ -385,6 +422,10 @@ class _HomeScreenState extends State<HomeScreen> {
         notificationText: "SmartSync está registrando tu ruta en segundo plano",
         notificationTitle: "Carrera Activa",
         enableWakeLock: true,
+        notificationIcon: AndroidResource(
+          name: 'launcher_icon',
+          defType: 'mipmap',
+        ),
       ),
     );
 
@@ -425,18 +466,17 @@ class _HomeScreenState extends State<HomeScreen> {
                    final myUid = FirebaseAuth.instance.currentUser?.uid;
                    final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
                    final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
+                   final userProv = Provider.of<UserProvider>(context, listen: false);
+                   final myBib = userProv.userData?.activeBibNumber;
+                   final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                   
                    int timeInSecs = 0;
                    if (_activeRaceStartTime != null) {
                       timeInSecs = DateTime.now().difference(_activeRaceStartTime!).inSeconds;
                    }
                    
                    if (myUid != null) {
-                     await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, timeInSecs, false);
-                     
-                     final userProv = Provider.of<UserProvider>(context, listen: false);
-                     final runProv = Provider.of<RunStateProvider>(context, listen: false);
-                     
-                     
+                     await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, timeInSecs, false, myBib);      
                      String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
                      
                      await LocalDatabase.instance.saveRaceHistory(
@@ -478,13 +518,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         final myUid = FirebaseAuth.instance.currentUser?.uid;
                         final myName = FirebaseAuth.instance.currentUser?.displayName ?? 'Runner';
                         final myPhoto = FirebaseAuth.instance.currentUser?.photoURL ?? '';
+                        final userProv = Provider.of<UserProvider>(context, listen: false);
+                        final runProv = Provider.of<RunStateProvider>(context, listen: false);
+                        final myBib = userProv.userData?.activeBibNumber;
                         
                         if (myUid != null) {
-                          await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true);
-                          
-                          final userProv = Provider.of<UserProvider>(context, listen: false);
-                          final runProv = Provider.of<RunStateProvider>(context, listen: false);
-                          
+                          await RaceService.instance.submitRaceResult(raceId, myUid, myName, myPhoto, 0, true, myBib);
                           String routeJson = jsonEncode(_activeRaceRoute.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList());
                           
                           await LocalDatabase.instance.saveRaceHistory(
@@ -548,6 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
+    final runProv = context.watch<RunStateProvider>();
     final user = userProvider.userData;
     bool isAdmin = user?.role == 'admin' || user?.role == 'super_admin' || user?.role == 'sudo';
     bool hasActiveRace = user?.activeRaceId != null;
@@ -557,6 +597,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _currentRaceId = user?.activeRaceId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_currentRaceId != null) {
+          if (mounted) {
+            setState(() {
+              _isDisqualified = false;
+              _isFinished = false;
+            });
+          }
           _fetchActiveRaceData(_currentRaceId!);
           if (!_isTracking) {
              _startTracking(isTrial, _currentRaceId);
@@ -566,13 +612,20 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isTracking) {
                _stopTracking();
             }
+            final runProv = Provider.of<RunStateProvider>(context, listen: false);
+            runProv.reset();
+            _raceDataSubscription?.cancel();
+            _liveLocationsSubscription?.cancel();
             setState(() {
+              _totalDistanceMeters = 0.0;
+              _currentSpeed = 0.0;
+              _isPaused = false;
               _activeRaceName = "CARRERA OFICIAL";
+              _activeRaceRoute = [];
               _polylines.removeWhere((p) => p.polylineId.value == 'official_race_route');
               _markers.removeWhere((m) => m.markerId.value == 'start_checkpoint' || 
                                           m.markerId.value == 'end_checkpoint' || 
                                           (m.markerId.value.startsWith('runner_') && m.markerId.value != 'runner_me'));
-              _liveLocationsSubscription?.cancel();
               _otherUsersMarkersIcons.clear();
             });
           }
@@ -637,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hasActiveRace ? "${_activeRaceName.toUpperCase()} - $_raceDistanceLabel" : "LIBRE - $_raceDistanceLabel",
+                        hasActiveRace ? "${_activeRaceName.toUpperCase()} - $_raceDistanceLabel" : "LIBRE - ${runProv.distanceFormatted}",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -910,10 +963,28 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              
+              if (_isTracking) {
+                _stopTracking();
+              }
+              final runProv = Provider.of<RunStateProvider>(context, listen: false);
+              if (_currentRaceId != null) {
+                runProv.setLastFinishedRaceId(_currentRaceId);
+              }
+              runProv.reset();
+              
               setState(() {
                 _isFinished = true;
                 _isTracking = false;
+                _totalDistanceMeters = 0.0;
+                _currentSpeed = 0.0;
+                _isPaused = false;
               });
+
+              final skeletonState = context.findAncestorStateOfType<MainSkeletonState>();
+              if (skeletonState != null) {
+                skeletonState.setSelectedIndex(1); // 1 = StatsScreen / Historial
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
             child: const Text("Entendido", style: TextStyle(color: Colors.white)),

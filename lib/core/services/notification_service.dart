@@ -34,25 +34,54 @@ class NotificationService {
   }) async {
     if (!_isInitialized) await init();
 
+    const String groupKey = 'com.smartsync.app.RACE_ALERTS';
+    const String channelId = 'smartsync_race_alerts';
+
     const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
-      'smartsync_race_alerts', 
+      channelId, 
       'Race Alerts',
       channelDescription: 'Important alerts about the current race',
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
-      color: const Color(0xFF4A90E2), // Will need import 'package:flutter/material.dart'; or just use a hex integer value
+      color: Color(0xFF4A90E2),
+      groupKey: groupKey,
     );
 
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
     );
 
+    // 1. Mostrar la notificación individual
     await _flutterLocalNotificationsPlugin.show(
       id,
       title,
       body,
       notificationDetails,
+    );
+
+    // 2. Mostrar/actualizar la notificación de resumen de grupo
+    const AndroidNotificationDetails summaryNotificationDetails = AndroidNotificationDetails(
+      channelId,
+      'Race Alerts',
+      channelDescription: 'Important alerts about the current race',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+      color: Color(0xFF4A90E2),
+      groupKey: groupKey,
+      setAsGroupSummary: true,
+    );
+
+    const NotificationDetails summaryDetails = NotificationDetails(
+      android: summaryNotificationDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      0, // ID fijo para el resumen
+      'Notificaciones de SmartSync',
+      'Alertas de carrera activas',
+      summaryDetails,
     );
   }
 }

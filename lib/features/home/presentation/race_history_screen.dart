@@ -140,17 +140,19 @@ class _RaceHistoryScreenState extends State<RaceHistoryScreen> {
           children: [
             if (race.status != 'archived')
               IconButton(
-                icon: const Icon(Icons.archive, color: Colors.redAccent, size: 20),
+                icon: const Icon(Icons.archive, color: Colors.purple, size: 20),
                 onPressed: () {
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text("Archivar/Borrar Carrera", style: TextStyle(color: Colors.red)),
-                      content: const Text("Esto limpiará la mayoría de datos pesados para liberar espacio y la ocultará, pero preservará el podio y la ruta. ¿Continuar?"),
+                      backgroundColor: theme.cardColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: const Text("Archivar Carrera", style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)),
+                      content: const Text("Esto moverá la carrera al estado archivado para limpiar datos temporales. ¿Continuar?"),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
                           onPressed: () async {
                             Navigator.pop(ctx);
                             await RaceService.instance.archiveRaceAndKeepPodium(race);
@@ -158,13 +160,18 @@ class _RaceHistoryScreenState extends State<RaceHistoryScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Carrera archivada")));
                             }
                           },
-                          child: const Text("Sí, Archivar", style: TextStyle(color: Colors.white)),
+                          child: const Text("Archivar", style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
                   );
                 },
               ),
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+              onPressed: () => _showDeleteConfirmationDialog(context, race),
+            ),
+            const SizedBox(width: 8),
             Icon(Icons.visibility, color: theme.colorScheme.onSurface.withOpacity(0.3), size: 20),
           ],
         ),
@@ -174,6 +181,63 @@ class _RaceHistoryScreenState extends State<RaceHistoryScreen> {
             MaterialPageRoute(builder: (context) => RaceSummaryScreen(race: race)),
           );
         },
+      ),
+    );
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context, RaceModel race) {
+    showDialog(
+      context: context,
+      builder: (ctx1) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Paso 1: Borrado Definitivo", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: Text("¿Estás seguro de que quieres eliminar DEFINITIVAMENTE la carrera '${race.name}'? Se borrará por completo de la base de datos."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx1), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx1);
+              showDialog(
+                context: context,
+                builder: (ctx2) => AlertDialog(
+                  backgroundColor: Theme.of(context).cardColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: const Text("Paso 2: Confirmación Final", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  content: const Text("¡ADVERTENCIA! Esta acción no se puede deshacer. Se eliminarán permanentemente el historial de tiempos y la ruta. ¿Proceder?"),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx2), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      onPressed: () async {
+                        Navigator.pop(ctx2);
+                        showDialog(
+                          context: context, barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+                        try {
+                          await RaceService.instance.deleteRace(race.raceId);
+                          if (context.mounted) {
+                            Navigator.pop(context); // Cierra loading
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Carrera eliminada permanentemente')));
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            Navigator.pop(context); // Cierra loading
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.redAccent));
+                          }
+                        }
+                      },
+                      child: const Text("ELIMINAR PARA SIEMPRE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: const Text("Siguiente Paso", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

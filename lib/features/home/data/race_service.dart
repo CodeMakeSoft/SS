@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'models/race_model.dart';
 
@@ -55,6 +56,54 @@ class RaceService {
       if (newStatus == 'ongoing') 'startTime': FieldValue.serverTimestamp(),
       if (newStatus == 'finished') 'endTime': FieldValue.serverTimestamp(),
     });
+
+    if (newStatus == 'finished') {
+      try {
+        final doc = await _firestore.collection('races').doc(raceId).get();
+        if (doc.exists) {
+          final data = doc.data()!;
+          final List<dynamic> participants = data['participants'] ?? [];
+          final List<dynamic> finishers = data['finishers'] ?? [];
+          
+          final Set<String> finishedUserIds = finishers.map((f) => f['userId'].toString()).toSet();
+          final List<String> unfinishedUserIds = participants
+              .map((p) => p.toString())
+              .where((p) => !finishedUserIds.contains(p))
+              .toList();
+          
+          if (unfinishedUserIds.isNotEmpty) {
+            final List<Map<String, dynamic>> resultsToAdd = [];
+            for (final userId in unfinishedUserIds) {
+              final userDoc = await _firestore.collection('users').doc(userId).get();
+              if (userDoc.exists) {
+                final userData = userDoc.data()!;
+                final displayName = userData['displayName'] ?? 'Runner';
+                final photoUrl = userData['photoURL'] ?? '';
+                final bibNumber = userData['activeBibNumber'];
+                
+                resultsToAdd.add({
+                  'userId': userId,
+                  'displayName': displayName,
+                  'photoUrl': photoUrl,
+                  'timeInSeconds': 0,
+                  'isDisqualified': true, // DNF / DESC
+                  'completedAt': Timestamp.now(),
+                  if (bibNumber != null) 'bibNumber': bibNumber,
+                });
+              }
+            }
+            if (resultsToAdd.isNotEmpty) {
+              await _firestore.collection('races').doc(raceId).update({
+                'finishers': FieldValue.arrayUnion(resultsToAdd),
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // En caso de error, continuar de forma segura
+        debugPrint("Error guardando competidores no finalizados: $e");
+      }
+    }
   }
 
   Future<bool> isBibNumberTaken(String raceId, String bibNumber, {String? excludeUserId}) async {
@@ -103,10 +152,6 @@ class RaceService {
     await batch.commit();
   }
 
-  // --- Race Control & Alerts ---
-
-  // --- Race Control & Alerts ---
-
   Future<void> sendGlobalAlert(String raceId, String type, String message, {int? countdownSeconds}) async {
     DateTime? targetTime;
     if (countdownSeconds != null) {
@@ -128,14 +173,15 @@ class RaceService {
     });
   }
 
-  Future<void> submitRaceResult(String raceId, String userId, String displayName, String photoUrl, int timeInSeconds, bool isDisqualified) async {
+  Future<void> submitRaceResult(String raceId, String userId, String displayName, String photoUrl, int timeInSeconds, bool isDisqualified, String? bibNumber) async {
     final result = {
       'userId': userId,
       'displayName': displayName,
       'photoUrl': photoUrl,
       'timeInSeconds': timeInSeconds,
       'isDisqualified': isDisqualified,
-      'completedAt': FieldValue.serverTimestamp(),
+      'completedAt': Timestamp.now(),
+      if (bibNumber != null) 'bibNumber': bibNumber,
     };
     
     await _firestore.collection('races').doc(raceId).update({
@@ -144,26 +190,57 @@ class RaceService {
   }
 
   Future<void> archiveRaceAndKeepPodium(RaceModel race) async {
-    List<Map<String, dynamic>> validFinishers = List.from(race.finishers);
-    validFinishers.removeWhere((f) => f['isDisqualified'] == true);
+    final batch = _firestore.batch();
     
-    // Ordenar por tiempo
-    validFinishers.sort((a, b) {
-      int timeA = a['timeInSeconds'] ?? 999999;
-      int timeB = b['timeInSeconds'] ?? 999999;
-      return timeA.compareTo(timeB);
-    });
-    
-    // Tomar solo el top 3
-    final podium = validFinishers.take(3).toList();
+    // 1. Obtener la carrera para saber los participantes y desvincularlos
+    final doc = await _firestore.collection('races').doc(race.raceId).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      final List<dynamic> participants = data['participants'] ?? [];
+      for (final userId in participants) {
+        batch.update(_firestore.collection('users').doc(userId.toString()), {
+          'activeRaceId': null,
+          'activeBibNumber': null,
+        });
+      }
+    }
 
-    await _firestore.collection('races').doc(race.raceId).update({
+    // 2. Archivar la carrera
+    batch.update(_firestore.collection('races').doc(race.raceId), {
       'status': 'archived',
-      'finishers': podium,
-      'participants': [], // Limpiar participantes
+      'participants': [],
       'alertType': FieldValue.delete(),
       'alertMessage': FieldValue.delete(),
       'alertTargetTime': FieldValue.delete(),
     });
+
+    await batch.commit();
+  }
+
+  Future<void> deleteRace(String raceId) async {
+    final batch = _firestore.batch();
+    
+    // 1. Obtener la carrera para saber los participantes
+    final doc = await _firestore.collection('races').doc(raceId).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      final List<dynamic> participants = data['participants'] ?? [];
+      
+      // 2. Desvincular a todos los participantes
+      for (final userId in participants) {
+        batch.update(_firestore.collection('users').doc(userId.toString()), {
+          'activeRaceId': null,
+          'activeBibNumber': null,
+        });
+        batch.delete(
+          _firestore.collection('races').doc(raceId).collection('live_locations').doc(userId.toString())
+        );
+      }
+    }
+    
+    // 3. Borrar el documento de la carrera
+    batch.delete(_firestore.collection('races').doc(raceId));
+    
+    await batch.commit();
   }
 }

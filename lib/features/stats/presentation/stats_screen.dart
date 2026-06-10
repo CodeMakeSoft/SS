@@ -7,7 +7,8 @@ import '../../home/providers/user_provider.dart';
 import '../../home/data/local_database.dart';
 
 class StatsScreen extends StatefulWidget {
-  const StatsScreen({super.key});
+  final bool isSelected;
+  const StatsScreen({super.key, this.isSelected = false});
 
   @override
   State<StatsScreen> createState() => _StatsScreenState();
@@ -24,6 +25,14 @@ class _StatsScreenState extends State<StatsScreen> {
     _loadHistory();
   }
 
+  @override
+  void didUpdateWidget(covariant StatsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected && !oldWidget.isSelected) {
+      _loadHistory();
+    }
+  }
+
   Future<void> _loadHistory() async {
     final history = await LocalDatabase.instance.getRaceHistory();
     if (mounted) {
@@ -31,6 +40,31 @@ class _StatsScreenState extends State<StatsScreen> {
         _raceHistory = history;
         _isLoadingHistory = false;
       });
+
+      // Auto-abrir la carrera recién finalizada
+      final runState = Provider.of<RunStateProvider>(context, listen: false);
+      final lastId = runState.lastFinishedRaceId;
+      if (lastId != null) {
+        final index = _raceHistory.indexWhere((r) => r['raceId'] == lastId);
+        if (index != -1) {
+          final run = _raceHistory[index];
+          final bool isDisqualified = run['isDisqualified'] == 1;
+          final int time = run['timeInSeconds'] ?? 0;
+          
+          runState.setLastFinishedRaceId(null); // Consumir el ID
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (ctx) => _buildRaceDetailsSheet(ctx, run, isDisqualified, time, Theme.of(context)),
+              );
+            }
+          });
+        }
+      }
     }
   }
 
